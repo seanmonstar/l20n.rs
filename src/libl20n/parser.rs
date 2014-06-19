@@ -30,7 +30,7 @@ pub enum ParseErrorKind {
   HashError,
 }
 
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum Entry {
   Entity(String, Value, Option<Vec<Expr>>),
   Macro(String, Vec<Expr>, Expr),
@@ -38,20 +38,20 @@ pub enum Entry {
   Comment(String),
 }
 
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum Value {
   Str(String),
-  ComplexStr(String, Vec<Expr>),
-  Hash(HashMap<String, Value>, Option<String>)
+  ComplexStr(Vec<Expr>),
+  Hash(HashMap<String, Value>, Option<String>, Option<Box<Expr>>)
 }
 
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum AccessType {
   Computed,
   Static,
 }
 
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum Expr {
   CondExpr(Box<Expr>, Box<Expr>, Box<Expr>),
   BinExpr(Box<Expr>, BinOp, Box<Expr>),
@@ -69,7 +69,7 @@ pub enum Expr {
 }
 
 
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum BinOp {
   BiAdd,
   BiSub,
@@ -86,7 +86,7 @@ pub enum BinOp {
   BiGe
 }
 
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum UnOp {
   UnAdd,
   UnSub,
@@ -300,11 +300,13 @@ impl<T: Iterator<char>> Parser<T> {
             self.bump();
             self.bump();
             self.parse_whitespace();
-            exprs.push(try!(self.parse_expression()));
+            let expr = try!(self.parse_expression());
             self.parse_whitespace();
             if self.ch_is('}') && self.peek() == Some('}') {
               self.bump();
-              s.push_str("{}");
+              exprs.push(ValExpr(Str(s)));
+              exprs.push(expr);
+              s = String::new();
             } else {
               return Err(self.error(ValueError));
             }
@@ -320,7 +322,10 @@ impl<T: Iterator<char>> Parser<T> {
     }
 
     if exprs.len() > 0 {
-      Ok(ComplexStr(s, exprs))
+      if s.len() > 0 {
+        exprs.push(ValExpr(Str(s)));
+      }
+      Ok(ComplexStr(exprs))
     } else {
       Ok(Str(s))
     }
@@ -374,7 +379,7 @@ impl<T: Iterator<char>> Parser<T> {
     self.bump();
     self.parse_whitespace();
 
-    Ok(Hash(map, default))
+    Ok(Hash(map, default, None))
   }
 
   fn parse_list(&mut self, end: char, err: ParseErrorKind, handle: |&mut Parser<T>| -> ParseResult<()>) -> ParseResult<()> {
@@ -570,8 +575,8 @@ impl<T: Iterator<char>> Parser<T> {
       self.bump();
       Ok(PropExpr(box accessed, box exp, Computed))
     } else {
-      let exp = try!(self.parse_expression());
-      Ok(PropExpr(box accessed, box exp, Static))
+      let exp = try!(self.parse_identifier());
+      Ok(PropExpr(box accessed, box IdentExpr(exp), Static))
     }
   }
 
@@ -599,12 +604,14 @@ impl<T: Iterator<char>> Parser<T> {
   }
 
   fn parse_call_expression(&mut self, callee: Expr) -> ParseResult<Expr> {
+    self.bump(); // (
     let mut args = vec![];
 
     try!(self.parse_list(')', CallError, |this| {
       args.push(try!(this.parse_expression()));
       Ok(())
     }));
+    self.bump(); // )
 
     Ok(CallExpr(box callee, args))
   }
@@ -753,7 +760,7 @@ mod tests {
     map.insert(s("masculine"), Str(s("his")));
     map.insert(s("feminine"), Str(s("her")));
     assert_eq!(p.parse().unwrap(), vec![
-               Entity(s("pro"), Hash(map, None), None)
+               Entity(s("pro"), Hash(map, None, None), None)
     ]);
   }
 
@@ -764,7 +771,7 @@ mod tests {
     map.insert(s("masculine"), Str(s("his")));
     map.insert(s("feminine"), Str(s("her")));
     assert_eq!(p.parse().unwrap(), vec![
-               Entity(s("pro"), Hash(map, Some(s("masculine"))), None)
+               Entity(s("pro"), Hash(map, Some(s("masculine")), None), None)
     ]);
   }
 
@@ -775,7 +782,7 @@ mod tests {
     map.insert(s("masculine"), Str(s("his")));
     map.insert(s("feminine"), Str(s("her")));
     assert_eq!(p.parse().unwrap(), vec![
-               Entity(s("pro"), Hash(map, None), Some(vec![ValExpr(Str(s("feminine")))]))
+               Entity(s("pro"), Hash(map, None, None), Some(vec![ValExpr(Str(s("feminine")))]))
     ]);
   }
 
@@ -783,7 +790,11 @@ mod tests {
   fn test_complex_str() {
     let p = Parser::new("<hi 'Hello, {{ $name }}!'>".chars());
     assert_eq!(p.parse().unwrap(), vec![
-               Entity(s("hi"), ComplexStr(s("Hello, {}!"), vec![VarExpr(s("name"))]), None)
+               Entity(s("hi"), ComplexStr(vec![
+                 ValExpr(Str(s("Hello, "))),
+                 VarExpr(s("name")),
+                 ValExpr(Str(s("!")))
+                 ]), None)
                ]);
   }
 

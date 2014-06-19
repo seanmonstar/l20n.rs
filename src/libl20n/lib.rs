@@ -7,7 +7,10 @@
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 
+extern crate serialize;
 
-// mod compiler;
-//pub mod context;
-mod parser;
+
+pub mod compiler;
+pub mod data;
+pub mod context;
+pub mod parser;
