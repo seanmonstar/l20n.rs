@@ -51,31 +51,49 @@ impl Context {
 }
 */
 
+/// A Locale contains all the resources for a specific language.
 #[deriving(Clone)]
 pub struct Locale {
   resources: HashMap<String, parser::Entry>
 }
 
+/// An enum of the various errors that can occur during localization.
 #[deriving(Show)]
 pub enum LocalizeError {
+  /// Wraps a DecodeError.
   DecodeError(data::DecodeError),
+  /// Wraps an EncodeError.
   EncodeError(data::EncodeError),
+  /// Wraps a ResolveError.
   ResolveError(compiler::ResolveError)
 }
 
 pub type LocalizeResult<T> = Result<T, LocalizeError>;
 
 impl Locale {
-  fn new() -> Locale {
+
+  /// Creates a new empty Locale.
+  pub fn new() -> Locale {
     Locale {
       resources: HashMap::new()
     }
   }
 
+  /// Add a L20n string resource, and it will be parsed.
+  pub fn add_resource(&mut self, res: &str) -> Result<(), parser::ParseError> {
+    let entities = try!(compiler::compile(res));
+    self.resources.extend(entities.move_iter());
+    Ok(())
+  }
+
+  /// Resolves all the resouces into Strings, and returns a Decodable
+  /// object of your choosing.
   pub fn localize<T: serialize::Decodable<data::Decoder, data::DecodeError>>(&self) -> LocalizeResult<T> {
     self.localize_data_raw(data::Null)
   }
 
+  /// Same as `localize`, but you provide environment Data for the L20n
+  /// files to use.
   pub fn localize_data<
     T: serialize::Decodable<data::Decoder, data::DecodeError>,
     D: serialize::Encodable<data::Encoder, data::EncodeError>
@@ -137,8 +155,7 @@ mod tests {
     <fac($n) { $n == 0 ? 1 : $n * fac($n -1) }>
     <factorial "Factorial of {{ $number }} is {{ fac($number) }}.">
     "#;
-    let entities = compiler::compile(src).unwrap();
-    locale.resources.extend(entities.move_iter());
+    locale.add_resource(src);
 
     let data = Values { number: 3 };
     let t: Translated = locale.localize_data(data).unwrap();

@@ -6,53 +6,35 @@ use data;
 use parser::{ParseError, Parser};
 use parser;
 
-#[deriving(Show)]
-pub enum CompileError {
-  ParserError(ParseError)
-}
+pub fn compile(source: &str) -> Result<HashMap<String, parser::Entry>, ParseError> {
+  let p = Parser::new(source.chars());
+  let entries = try!(p.parse());
 
-pub type CompileResult = Result<HashMap<String, parser::Entry>, CompileError>;
+  // TODO: parse all imports
 
-pub struct Compiler;
+  let mut map = HashMap::new();
 
-impl Compiler {
-  pub fn new() -> Compiler {
-    Compiler
-  }
-
-  pub fn compile(&mut self, source: &str) -> CompileResult {
-    let p = Parser::new(source.chars());
-    let entries = match p.parse() {
-      Ok(entries) => entries,
-      Err(e) => return Err(ParserError(e))
-    };
-
-    // TODO: parse all imports
-
-    let mut map = HashMap::new();
-
-    for mut entry in entries.move_iter() {
-      let id = match entry {
-        parser::Comment(..) | parser::Import(..) => continue,
-        parser::Macro(ref id, _, _) => id.clone(),
-        parser::Entity(ref id, ref mut value, ref indices)  => {
-          // while we're here, fix up and Hash values with default indices
-          match value  {
-            &parser::Hash(..) => {
-              if indices.is_some() {
-                add_default_indices(value, indices.get_ref().as_slice());
-              }
-              id.clone()
-            },
-            _ => id.clone()
-          }
+  for mut entry in entries.move_iter() {
+    let id = match entry {
+      parser::Comment(..) | parser::Import(..) => continue,
+      parser::Macro(ref id, _, _) => id.clone(),
+      parser::Entity(ref id, ref mut value, ref indices)  => {
+        // while we're here, fix up and Hash values with default indices
+        match value  {
+          &parser::Hash(..) => {
+            if indices.is_some() {
+              add_default_indices(value, indices.get_ref().as_slice());
+            }
+            id.clone()
+          },
+          _ => id.clone()
         }
-      };
-      map.insert(id, entry);
-    }
-
-    Ok(map)
+      }
+    };
+    map.insert(id, entry);
   }
+
+  Ok(map)
 }
 
 
@@ -72,13 +54,6 @@ fn add_default_indices(value: &mut parser::Value, mut indices: &[parser::Expr]) 
     _ => {}
   }
 }
-
-
-pub fn compile(source: &str) -> CompileResult {
-  let mut c = Compiler;
-  c.compile(source)
-}
-
 
 pub type Env = HashMap<String, parser::Entry>;
 
@@ -126,18 +101,32 @@ pub enum ResolveTarget {
   Data(data::Data)
 }
 
+/// Errors that can occur when resolving a set of l20n resources into strings.
+/// These errors are cause by problems in the l20n file, or incorrect Data
+/// provided when localizing.
 #[deriving(Show)]
 pub enum ResolveError {
+  /// A resource received a value of the wrong type.
   WrongType,
+  /// A macro was called with the wrong number of arguments.
   WrongNumberOfArgs,
+  /// Accessed an index of a Hash that does not exist.
   MissingIndex,
+  /// Tried to use a $var that did not exist in the provided Data.
   MissingVar(String),
+  /// A string tried to use another string in the l20n resource that did not
+  /// exist.
   MissingIdent(String),
 }
 
+/// Resolve an L20n resource into Data.
 pub trait Resolve {
+
+  /// Resolves this value a step. It could resolve to another Value, or
+  /// resolve completely to a Data.
   fn resolve(&self, ctx: &ResolveContext) -> ResolveResult;
 
+  /// Keeps resolving until a Data value is returned.
   fn resolve_data(&self, ctx: &ResolveContext) -> Result<data::Data, ResolveError> {
     match self.resolve(ctx) {
       Ok(Data(d)) => Ok(d),
@@ -351,13 +340,12 @@ impl Resolve for parser::Expr {
 
 #[cfg(test)]
 mod tests {
-  use super::{Compiler, Resolve, ResolveContext};
+  use super::{compile, Resolve, ResolveContext};
   use data::{Str, Null};
 
   #[test]
   fn test_compile() {
-    let mut c = Compiler;
-    let map = c.compile("<hi 'hello world'>").unwrap();
+    let map = compile("<hi 'hello world'>").unwrap();
     let entity = map.get(&String::from_str("hi"));
     let data = Null;
     let ctx = ResolveContext::new(&map, &data);

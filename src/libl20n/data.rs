@@ -6,6 +6,8 @@ use std::str;
 
 use serialize;
 
+/// An internal Data format used to resolve L20n resources.
+#[doc(hidden)]
 #[deriving(Show, PartialEq, Clone)]
 pub enum Data {
   Null,
@@ -17,6 +19,10 @@ pub enum Data {
 }
 
 impl Data {
+
+  /// Convenience method to unwrapping a Map and calling the same method
+  /// on it.
+  #[doc(hidden)]
   pub fn find_copy(&self, key: &String) -> Option<Data> {
     match *self {
       Map(ref map) => map.find_copy(key),
@@ -25,24 +31,32 @@ impl Data {
   }
 }
 
+#[doc(hidden)]
 pub struct Encoder {
   data: Vec<Data>
 }
 
 impl Encoder {
+  #[doc(hidden)]
   pub fn new() -> Encoder {
     Encoder { data: vec![] }
   }
 
+  #[doc(hidden)]
   pub fn data(mut self) -> Option<Data> {
     self.data.pop()
   }
 }
 
+/// Errors that occur encoding environment data into something the L20n
+/// resources can use.
 #[deriving(Show)]
 pub enum EncodeError {
+  /// Type is not usable in L20n.
   UnsupportedType,
+  /// Maps in L20n require keys to be Strings.
   KeyIsNotString,
+  /// A map element is missing.
   MissingElements,
 }
 
@@ -238,11 +252,13 @@ impl<'a> serialize::Encoder<EncodeError> for Encoder {
     }
 }
 
+#[doc(hidden)]
 pub struct Decoder {
   data: Vec<Data>
 }
 
 impl Decoder {
+  /// Creates a new Decoder.
   pub fn new(data: Data) -> Decoder {
     Decoder {
       data: vec![data]
@@ -252,9 +268,12 @@ impl Decoder {
 
 pub type DecodeResult<T> = Result<T, DecodeError>;
 
+/// Errors that can occur decoding an L20n file into a Rust value.
 #[deriving(Show)]
 pub enum DecodeError {
+  /// The type being requested doesn't match what the L20n file outputs.
   WrongType,
+  /// A string was request from L20n that wasn't in the resources.
   MissingField(String)
 }
 

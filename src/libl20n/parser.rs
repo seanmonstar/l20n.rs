@@ -7,26 +7,46 @@ use std::num::FromStrRadix;
 
 pub type ParseResult<T> = Result<T, ParseError>;
 
+/// An error occurred trying to parse an L20n resource. The L20n file is
+/// invalid.
 #[deriving(Show)]
 pub struct ParseError {
-  kind: ParseErrorKind,
-  line: uint,
-  col: uint,
+  /// The kind of error.
+  pub kind: ParseErrorKind,
+  /// The line where the error occurred.
+  pub line: uint,
+  /// The column where the error occurred.
+  pub col: uint,
 }
+
+/// The description of the ParseError that occurred.
 #[deriving(Show, PartialEq)]
 pub enum ParseErrorKind {
+  /// Illegal syntax for an identifier.
   IdentifierError,
+  /// Illegal syntax for an entry.
   EntryError,
+  /// Illegal syntax for an entity.
   EntityError,
+  /// Illegal syntax for a macro.
   MacroError,
+  /// Illegal syntax for an expression.
   ExprError,
+  /// Illegal syntax for an operator.
   OpError,
+  /// Illegal syntax for an expression wrapped in parenthesis.
   ParenError,
+  /// Illegal syntax for an attribute.
   AttrError,
+  /// Illegal syntax for a call expression (calling a macro).
   CallError,
+  /// Illegal syntax for a value, when a value was expected.
   ValueError,
+  /// Illegal syntax for a $var.
   VarError,
+  /// Illegal syntax for a "String".
   StrError,
+  /// Illegal syntax for a Hash.
   HashError,
 }
 
