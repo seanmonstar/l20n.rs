@@ -18,17 +18,28 @@ pub fn compile(source: &str) -> Result<HashMap<String, parser::Entry>, ParseErro
     let id = match entry {
       parser::Comment(..) | parser::Import(..) => continue,
       parser::Macro(ref id, _, _) => id.clone(),
-      parser::Entity(ref id, ref mut value, ref indices)  => {
+      parser::Entity(ref id, ref mut value, ref indices, ref mut attrs)  => {
         // while we're here, fix up and Hash values with default indices
         match value  {
           &parser::Hash(..) => {
-            if indices.is_some() {
-              add_default_indices(value, indices.get_ref().as_slice());
+            if indices.len() > 0 {
+              add_default_indices(value, indices.as_slice());
             }
-            id.clone()
           },
-          _ => id.clone()
+          _ => {}
+        };
+        for &parser::Attr(_, ref mut value, ref indices) in attrs.mut_iter() {
+          match value  {
+            &parser::Hash(..) => {
+              if indices.len() > 0 {
+                add_default_indices(value, indices.as_slice());
+              }
+            },
+            _ => {}
+          };
         }
+
+        id.clone()
       }
     };
     map.insert(id, entry);
@@ -112,6 +123,8 @@ pub enum ResolveError {
   WrongNumberOfArgs,
   /// Accessed an index of a Hash that does not exist.
   MissingIndex,
+  /// Accessed an attribute of an entity that does not exist.
+  MissingAttr,
   /// Tried to use a $var that did not exist in the provided Data.
   MissingVar(String),
   /// A string tried to use another string in the l20n resource that did not
@@ -149,7 +162,7 @@ impl Resolve for ResolveTarget {
 impl Resolve for parser::Entry {
   fn resolve(&self, _ctx: &ResolveContext) -> ResolveResult {
     match *self {
-      parser::Entity(_, ref value, _) => {
+      parser::Entity(_, ref value, _, _) => {
         Ok(Value(value.clone()))
       }
       _ => Ok(Data(data::Null))
@@ -262,7 +275,7 @@ impl Resolve for parser::Expr {
       }
       parser::IdentExpr(ref ident) => {
         match ctx.env.find(ident) {
-          Some(e) => e.resolve(ctx),
+          Some(e) => Ok(Entry(e.clone())),
           None => Err(MissingIdent(ident.clone()))
         }
       }
@@ -318,7 +331,6 @@ impl Resolve for parser::Expr {
           }
         };
 
-        println!("PropExpr {} {}", parent, prop);
         match parent.resolve(ctx) {
           Ok(Data(data::Map(ref m))) => {
             match m.find_copy(&prop) {
@@ -326,8 +338,41 @@ impl Resolve for parser::Expr {
               None => Err(MissingIndex)
             }
           },
+          Ok(Entry(ref e)) => {
+            match e.resolve(ctx) {
+              Ok(Value(ref v)) => v.resolve(&ctx.with_index(Some(prop))),
+              Ok(_) => Err(WrongType),
+              Err(e) => Err(e)
+            }
+          },
           Ok(Value(ref v)) => {
             v.resolve(&ctx.with_index(Some(prop)))
+          },
+          Ok(_) => Err(WrongType),
+          Err(e) => Err(e)
+        }
+      }
+      parser::AttrExpr(ref parent, ref prop, ref access) => {
+        let prop = match *access {
+          parser::Computed => match prop.resolve_data(ctx) {
+            Ok(data::Str(s)) => s,
+            Ok(_) => return Err(WrongType),
+            Err(e) => return Err(e)
+          },
+          parser::Static => match *prop {
+            box parser::IdentExpr(ref s) => s.clone(),
+            _ => return Err(WrongType)
+          }
+        };
+
+        match parent.resolve(ctx) {
+          Ok(Entry(parser::Entity(_, _, _, ref attrs))) => {
+            for &parser::Attr(ref id, ref value, _) in attrs.iter() {
+              if id.as_slice() == prop.as_slice() {
+                return value.resolve(ctx)
+              }
+            }
+            Err(MissingAttr)
           },
           Ok(_) => Err(WrongType),
           Err(e) => Err(e)

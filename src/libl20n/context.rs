@@ -129,7 +129,6 @@ impl Locale {
 #[cfg(test)]
 mod tests {
 
-  use compiler;
   use super::Locale;
 
   #[deriving(Decodable)]
@@ -148,19 +147,19 @@ mod tests {
   fn test_locale() {
     let mut locale = Locale::new();
     let src = r#"
-    <brand 'Rust'>
-    <hi 'Hello, {{ brand }}!'>
+    <brand 'Rust' long: 'Rust Lang'>
+    <hi 'Hello, {{ brand::long }}!'>
     <many['zero'] { zero: 'none', one: 'one', many: 'too many' }>
     <mail 'Email in your inbox: {{ many.many }}.'>
     <fac($n) { $n == 0 ? 1 : $n * fac($n -1) }>
     <factorial "Factorial of {{ $number }} is {{ fac($number) }}.">
     "#;
-    locale.add_resource(src);
+    locale.add_resource(src).unwrap();
 
     let data = Values { number: 3 };
     let t: Translated = locale.localize_data(data).unwrap();
 
-    assert_eq!(t.hi.as_slice(), "Hello, Rust!");
+    assert_eq!(t.hi.as_slice(), "Hello, Rust Lang!");
     assert_eq!(t.factorial.as_slice(), "Factorial of 3 is 6.");
     assert_eq!(t.mail.as_slice(), "Email in your inbox: too many.");
   }

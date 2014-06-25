@@ -52,7 +52,7 @@ pub enum ParseErrorKind {
 
 #[deriving(Show, PartialEq, Clone)]
 pub enum Entry {
-  Entity(String, Value, Option<Vec<Expr>>),
+  Entity(String, Value, Vec<Expr>, Vec<Attr>),
   Macro(String, Vec<Expr>, Expr),
   Import(String),
   Comment(String),
@@ -88,6 +88,10 @@ pub enum Expr {
   ThisExpr,
 }
 
+#[deriving(Show, PartialEq, Clone)]
+pub enum Attr {
+  Attr(String, Value, Vec<Expr>)
+}
 
 #[deriving(Show, PartialEq, Clone)]
 pub enum BinOp {
@@ -210,6 +214,7 @@ impl<T: Iterator<char>> Parser<T> {
       None => return Err(self.error(EntryError))
     };
 
+    self.parse_whitespace();
     if self.ch_is('>') {
       self.bump();
       Ok(val)
@@ -254,16 +259,14 @@ impl<T: Iterator<char>> Parser<T> {
   }
 
   fn parse_entity(&mut self, id: String) -> ParseResult<Entry> {
-    let mut index = None;
+    let mut index = vec![];
     if self.ch_is('[') {
-      let mut exprs = vec![];
       self.bump();
       try!(self.parse_list(']', EntityError, |this| {
-        exprs.push(try!(this.parse_expression()));
+        index.push(try!(this.parse_expression()));
         Ok(())
       }));
       self.bump();
-      index = Some(exprs);
     }
 
     // whitespace here is required
@@ -272,7 +275,44 @@ impl<T: Iterator<char>> Parser<T> {
     };
     self.parse_whitespace();
 
-    Ok(Entity(id, try!(self.parse_value()), index))
+    let value = try!(self.parse_value());
+    self.parse_whitespace();
+    let attrs = try!(self.parse_attrs());
+
+    Ok(Entity(id, value, index, attrs))
+  }
+
+  fn parse_attrs(&mut self) -> ParseResult<Vec<Attr>> {
+    let mut attrs = vec![];
+    loop {
+      match self.ch {
+        Some('>') => break,
+        _ => {}
+      }
+
+      let id = try!(self.parse_identifier());
+
+      let mut indices = vec![];
+      if self.ch_is('[') {
+        self.bump();
+        try!(self.parse_list(']', AttrError, |this| {
+          indices.push(try!(this.parse_expression()));
+          Ok(())
+        }));
+      }
+
+      self.parse_whitespace();
+      if !self.ch_is(':') {
+        return Err(self.error(AttrError));
+      }
+      self.bump();
+      self.parse_whitespace();
+
+      let value = try!(self.parse_value());
+
+      attrs.push(Attr(id, value, indices));
+    }
+    Ok(attrs)
   }
 
   fn parse_comment(&mut self) -> ParseResult<Entry> {
@@ -735,7 +775,8 @@ impl<T: Iterator<char>> Parser<T> {
 
 #[cfg(test)]
 mod tests {
-  use super::{Parser, Entity, Str, Hash, VarExpr, Macro, CondExpr, BinExpr, ValExpr, ComplexStr, NumExpr, BiGt, Comment};
+  use super::{Parser, Entity, Str, Hash, Attr, VarExpr, Macro, CondExpr,
+              BinExpr, ValExpr, ComplexStr, NumExpr, BiGt, Comment};
   use std::collections::HashMap;
 
   fn s(v: &'static str) -> String {
@@ -744,9 +785,9 @@ mod tests {
 
   #[test]
   fn test_basic_entity() {
-    let p = Parser::new("<hello \"Hello, World\">".chars());
+    let p = Parser::new("<hello \"Hello, World\" >".chars());
     assert_eq!(p.parse().unwrap(), vec![
-               Entity(s("hello"), Str(s("Hello, World")), None)
+               Entity(s("hello"), Str(s("Hello, World")), vec![], vec![])
     ]);
   }
 
@@ -754,8 +795,8 @@ mod tests {
   fn test_multiple_entities() {
     let p = Parser::new("<hell0 \"Hello, World\">\n<bye 'Bye!'>".chars());
     assert_eq!(p.parse().unwrap(), vec![
-               Entity(s("hell0"), Str(s("Hello, World")), None),
-               Entity(s("bye"), Str(s("Bye!")), None)
+               Entity(s("hell0"), Str(s("Hello, World")), vec![], vec![]),
+               Entity(s("bye"), Str(s("Bye!")), vec![], vec![])
     ]);
   }
 
@@ -780,7 +821,7 @@ mod tests {
     map.insert(s("masculine"), Str(s("his")));
     map.insert(s("feminine"), Str(s("her")));
     assert_eq!(p.parse().unwrap(), vec![
-               Entity(s("pro"), Hash(map, None, None), None)
+               Entity(s("pro"), Hash(map, None, None), vec![], vec![])
     ]);
   }
 
@@ -791,7 +832,7 @@ mod tests {
     map.insert(s("masculine"), Str(s("his")));
     map.insert(s("feminine"), Str(s("her")));
     assert_eq!(p.parse().unwrap(), vec![
-               Entity(s("pro"), Hash(map, Some(s("masculine")), None), None)
+               Entity(s("pro"), Hash(map, Some(s("masculine")), None), vec![], vec![])
     ]);
   }
 
@@ -802,7 +843,15 @@ mod tests {
     map.insert(s("masculine"), Str(s("his")));
     map.insert(s("feminine"), Str(s("her")));
     assert_eq!(p.parse().unwrap(), vec![
-               Entity(s("pro"), Hash(map, None, None), Some(vec![ValExpr(Str(s("feminine")))]))
+               Entity(s("pro"), Hash(map, None, None), vec![ValExpr(Str(s("feminine")))], vec![])
+    ]);
+  }
+
+  #[test]
+  fn test_attr() {
+    let p = Parser::new("<pro 'her' neuter: 'their'>".chars());
+    assert_eq!(p.parse().unwrap(), vec![
+               Entity(s("pro"), Str(s("her")), vec![], vec![Attr(s("neuter"), Str(s("their")), vec![])])
     ]);
   }
 
@@ -814,7 +863,7 @@ mod tests {
                  ValExpr(Str(s("Hello, "))),
                  VarExpr(s("name")),
                  ValExpr(Str(s("!")))
-                 ]), None)
+                 ]), vec![], vec![])
                ]);
   }
 
