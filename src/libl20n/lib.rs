@@ -37,7 +37,7 @@
 //! }
 //! ```
 
-#![crate_id = "l20n#0.1-pre"]
+#![crate_name = "l20n"]
 #![license = "MPLv2"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]

@@ -7,7 +7,7 @@ use compiler;
 use data;
 use parser;
 
-/*
+
 pub struct Context {
   locales: HashMap<String, Locale>,
   default_locale: String
@@ -28,12 +28,13 @@ impl Context {
   }
 
 
-  pub fn add_resource(&mut self, res: String) -> Result<(), compiler::CompileError>{
-    self.add_locale_resource(self.default_locale.clone(), res)
+  /*
+  pub fn add_resource(&mut self, res: String) -> Result<(), parser::ParseError>{
+    self.add_locale_resource("i-default".to_string(), res) //self.default_locale.clone(), res)
   }
 
 
-  pub fn add_locale_resource(&mut self, name: String, res: String) -> Result<(), compiler::CompileError> {
+  pub fn add_locale_resource(&mut self, name: String, res: String) -> Result<(), parser::ParseError> {
     let mut locale = self.locales.find_or_insert_with(name, |_| Locale::new());
     let entities = try!(compiler::compile(res.as_slice()));
     locale.resources.extend(entities.move_iter());
@@ -47,12 +48,12 @@ impl Context {
   pub fn get_locale<'a>(&'a self, name: &str) -> Option<&'a Locale> {
     self.locales.find_equiv(&name)
   }
+  */
 
 }
-*/
+
 
 /// A Locale contains all the resources for a specific language.
-#[deriving(Clone)]
 pub struct Locale {
   resources: HashMap<String, parser::Entry>
 }

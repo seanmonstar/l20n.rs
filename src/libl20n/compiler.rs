@@ -1,6 +1,5 @@
 
 use std::collections::HashMap;
-use std::num::ToStrRadix;
 
 use data;
 use parser::{ParseError, Parser};
@@ -179,7 +178,7 @@ impl Resolve for parser::Value {
         for expr in exprs.iter() {
           vec.push(match expr.resolve_data(ctx) {
             Ok(data::Str(s)) => s,
-            Ok(data::Num(n)) => n.to_str_radix(10),
+            Ok(data::Num(n)) => format!("{}", n),
             Ok(_) => return Err(WrongType),
             Err(e) => return Err(e)
           });
