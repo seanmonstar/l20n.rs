@@ -274,7 +274,11 @@ pub enum DecodeError {
   /// The type being requested doesn't match what the L20n file outputs.
   WrongType,
   /// A string was request from L20n that wasn't in the resources.
-  MissingField(String)
+  MissingField(String),
+  /// An error produced by a Decodable
+  ///
+  /// See https://github.com/rust-lang/rust/issues/15036
+  ApplicationError(String),
 }
 
 impl serialize::Decoder<DecodeError> for Decoder {
@@ -481,5 +485,9 @@ impl serialize::Decoder<DecodeError> for Decoder {
     fn read_map_elt_val<T>(&mut self, _idx: uint, f: |&mut Decoder| -> DecodeResult<T>)
                            -> DecodeResult<T> {
         f(self)
+    }
+
+    fn error(&mut self, err: &str) -> DecodeError {
+        ApplicationError(err.to_string())
     }
 }
