@@ -776,7 +776,7 @@ impl<T: Iterator<char>> Parser<T> {
 #[cfg(test)]
 mod tests {
   use super::{Parser, Entity, Str, Hash, Attr, VarExpr, Macro, CondExpr,
-              BinExpr, ValExpr, ComplexStr, NumExpr, BiGt, Comment};
+              BinExpr, ValExpr, ComplexStr, NumExpr, BiGt, BiGe, Comment};
   use std::collections::HashMap;
 
   fn s(v: &'static str) -> String {
@@ -807,6 +807,20 @@ mod tests {
                Macro(s("foo"),
                      vec![VarExpr(s("n"))],
                      CondExpr(box BinExpr(box VarExpr(s("n")), BiGt, box NumExpr(1)),
+                              box ValExpr(Str(s("foo"))),
+                              box ValExpr(Str(s("bar")))
+                     )
+               ),
+    ]);
+  }
+
+  #[test]
+  fn test_ge() {
+    let p = Parser::new("<foo($n) { $n >= 1 ? 'foo' : 'bar' }>".chars());
+    assert_eq!(p.parse().unwrap(), vec![
+               Macro(s("foo"),
+                     vec![VarExpr(s("n"))],
+                     CondExpr(box BinExpr(box VarExpr(s("n")), BiGe, box NumExpr(1)),
                               box ValExpr(Str(s("foo"))),
                               box ValExpr(Str(s("bar")))
                      )
