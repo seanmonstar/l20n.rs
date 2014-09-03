@@ -578,7 +578,7 @@ impl<T: Iterator<char>> Parser<T> {
   }
 
   fn parse_rel_expression(&mut self) -> ParseResult<Expr> {
-    self.parse_prefix_expression([BiGt, BiGe, BiLt, BiLe], |this| this.parse_add_expression())
+    self.parse_prefix_expression([BiGe, BiGt, BiLe, BiLt], |this| this.parse_add_expression())
   }
 
   fn parse_add_expression(&mut self) -> ParseResult<Expr> {
