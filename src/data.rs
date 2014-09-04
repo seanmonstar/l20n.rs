@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 use std::collections::HashMap;
-use std::str;
 
 use serialize;
 
@@ -89,7 +88,7 @@ impl<'a> serialize::Encoder<EncodeError> for Encoder {
     }
 
     fn emit_char(&mut self, v: char) -> EncoderResult {
-        self.data.push(Str(str::from_char(v)));
+        self.data.push(Str(v.to_string()));
         Ok(())
     }
 
