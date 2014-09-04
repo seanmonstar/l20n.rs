@@ -22,7 +22,7 @@ pub fn compile(source: &str) -> Result<HashMap<String, parser::Entry>, ParseErro
         match value  {
           &parser::Hash(..) => {
             if indices.len() > 0 {
-              add_default_indices(value, indices.as_slice());
+              add_default_indices(value, indices.iter());
             }
           },
           _ => {}
@@ -31,7 +31,7 @@ pub fn compile(source: &str) -> Result<HashMap<String, parser::Entry>, ParseErro
           match value  {
             &parser::Hash(..) => {
               if indices.len() > 0 {
-                add_default_indices(value, indices.as_slice());
+                add_default_indices(value, indices.iter());
               }
             },
             _ => {}
@@ -48,13 +48,13 @@ pub fn compile(source: &str) -> Result<HashMap<String, parser::Entry>, ParseErro
 }
 
 
-fn add_default_indices(value: &mut parser::Value, mut indices: &[parser::Expr]) {
+fn add_default_indices<'r, I: Iterator<&'r parser::Expr> + Clone>(value: &mut parser::Value, mut indices: I) {
   match value {
     &parser::Hash(ref mut map, _, ref mut def_index) => {
-      match indices.shift_ref() {
+      match indices.next() {
         Some(idx) => {
           for (_k, v) in map.mut_iter() {
-            add_default_indices(v, indices);
+            add_default_indices(v, indices.clone());
           }
           *def_index = Some(box idx.clone())
         },
