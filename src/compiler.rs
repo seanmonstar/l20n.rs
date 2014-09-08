@@ -390,7 +390,7 @@ mod tests {
   #[test]
   fn test_compile() {
     let map = compile("<hi 'hello world'>").unwrap();
-    let entity = map.get(&String::from_str("hi"));
+    let entity = &map[String::from_str("hi")];
     let data = Null;
     let ctx = ResolveContext::new(&map, &data);
 
