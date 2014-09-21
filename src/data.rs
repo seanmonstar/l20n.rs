@@ -450,7 +450,7 @@ impl serialize::Decoder<DecodeError> for Decoder {
           _ => return Err(WrongType)
         };
         let len = list.len();
-        for v in list.move_iter().rev() {
+        for v in list.into_iter().rev() {
             self.data.push(v);
         }
         f(self, len)
@@ -469,7 +469,7 @@ impl serialize::Decoder<DecodeError> for Decoder {
           _ => return Err(WrongType)
         };
         let len = obj.len();
-        for (key, value) in obj.move_iter() {
+        for (key, value) in obj.into_iter() {
             self.data.push(value);
             self.data.push(Str(key));
         }

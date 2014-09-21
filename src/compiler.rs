@@ -13,7 +13,7 @@ pub fn compile(source: &str) -> Result<HashMap<String, parser::Entry>, ParseErro
 
   let mut map = HashMap::new();
 
-  for mut entry in entries.move_iter() {
+  for mut entry in entries.into_iter() {
     let id = match entry {
       parser::Comment(..) | parser::Import(..) => continue,
       parser::Macro(ref id, _, _) => id.clone(),
@@ -27,7 +27,7 @@ pub fn compile(source: &str) -> Result<HashMap<String, parser::Entry>, ParseErro
           },
           _ => {}
         };
-        for &parser::Attr(_, ref mut value, ref indices) in attrs.mut_iter() {
+        for &parser::Attr(_, ref mut value, ref indices) in attrs.iter_mut() {
           match value  {
             &parser::Hash(..) => {
               if indices.len() > 0 {
@@ -53,7 +53,7 @@ fn add_default_indices<'r, I: Iterator<&'r parser::Expr> + Clone>(value: &mut pa
     &parser::Hash(ref mut map, _, ref mut def_index) => {
       match indices.next() {
         Some(idx) => {
-          for (_k, v) in map.mut_iter() {
+          for (_k, v) in map.iter_mut() {
             add_default_indices(v, indices.clone());
           }
           *def_index = Some(box idx.clone())

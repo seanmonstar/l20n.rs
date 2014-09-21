@@ -83,7 +83,7 @@ impl Locale {
   /// Add a L20n string resource, and it will be parsed.
   pub fn add_resource(&mut self, res: &str) -> Result<(), parser::ParseError> {
     let entities = try!(compiler::compile(res));
-    self.resources.extend(entities.move_iter());
+    self.resources.extend(entities.into_iter());
     Ok(())
   }
 
