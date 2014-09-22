@@ -89,9 +89,7 @@ pub enum Expr {
 }
 
 #[deriving(Show, PartialEq, Clone)]
-pub enum Attr {
-  Attr(String, Value, Vec<Expr>)
-}
+pub struct Attr(pub String, pub Value, pub Vec<Expr>);
 
 #[deriving(Show, PartialEq, Clone)]
 pub enum BinOp {
