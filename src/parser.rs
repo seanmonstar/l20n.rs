@@ -1,17 +1,16 @@
-
 pub struct ParseError {
-  /// The line where the error occurred.
   pub line: u8,
 }
 
 
 pub struct Parser {
   pos: u8,
-  source: String
+  source: String,
+  ch: Option<char>
 }
 
 pub enum Entry {
-  Entity(String)
+  Entity {id: String}
 }
 
 pub enum Value {
@@ -22,11 +21,18 @@ impl Parser {
   pub fn new(source: String) -> Parser {
     Parser {
       pos: 0,
-      source: source
+      source: source,
+      ch: None
     }
   }
 
-  pub fn parse(&self) -> Vec<Entry> {
+  fn bump(&mut self) {
+    self.ch = self.source.chars().next();
+
+    self.pos += 1;
+  }
+
+  pub fn parse(&mut self) -> Vec<Entry> {
     let mut entries: Vec<Entry> = Vec::new();
     loop {
       let ch = match self.source.chars().next() {
@@ -36,23 +42,36 @@ impl Parser {
 
       if ch == '<' {
         entries.push(self.parse_entry());
+        break;
       }
     }
     entries
   }
 
-  pub fn parse_entry(&self) -> Entry {
+  pub fn parse_entry(&mut self) -> Entry {
+    self.bump();
     let id = self.parse_identifier();
     self.parse_entity(id)
   }
 
   pub fn parse_entity(&self, id: String) -> Entry {
-    Entry::Entity(id)
+    Entry::Entity{id: id}
   }
 
-  pub fn parse_identifier(&self) -> String {
+  pub fn parse_identifier(&mut self) -> String {
     let mut id = String::new();
-    id.push('a');
+
+    loop {
+      self.bump();
+      let ch = match self.ch {
+        Some(c) => c,
+        None => break,
+      };
+
+      id.push(ch);
+      break;
+    }
+
     id
   }
 }
@@ -60,19 +79,20 @@ impl Parser {
 /*  ---------------------- */
 
 fn read_file() -> String {
-  let s = "<entity1 'Value'>".to_string();
+  let s = "<entity1>".to_string();
   return s
 }
 
 fn main() {
   let source = read_file();
-  let parser = Parser::new(source);
-  let entries = parser.parse();
+  let mut parser = Parser::new(source);
+  let mut entries = parser.parse();
 
   let entry1 = entries.pop();
 
   let id = match entry1 {
-    Entry::Entity(ref id) => id.clone(),
+    Some(Entry::Entity{id}) => id.clone(),
+    None => "".to_string()
   };
 
   println!("The result is {}", id);
