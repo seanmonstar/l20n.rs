@@ -1,41 +1,50 @@
-pub struct ParseError {
-  pub line: u8,
-}
-
-
-pub struct Parser {
-  pos: u8,
-  source: String,
-  ch: Option<char>
-}
-
 pub enum Entry {
-  Entity {id: String}
+  Entity {id: String, value: String}
 }
 
 pub enum Value {
   Str(String)
 }
 
-impl Parser {
-  pub fn new(source: String) -> Parser {
+pub struct Parser<'a> {
+  source: std::str::Chars<'a>,
+  ch: Option<char>,
+  pos: u8
+}
+
+impl<'a> Parser<'a> {
+  pub fn new(source: &'a str) -> Parser<'a> {
     Parser {
-      pos: 0,
-      source: source,
-      ch: None
+      source: source.chars(),
+      ch: None,
+      pos: 0
     }
   }
 
   fn bump(&mut self) {
-    self.ch = self.source.chars().next();
+    self.ch = self.source.next();
 
     self.pos += 1;
   }
 
+  fn ch_is(&self, ch: char) -> bool {
+    self.ch == Some(ch)
+  }
+
+  fn parse_whitespace(&mut self) {
+    while self.ch_is(' ') ||
+          self.ch_is('\n') ||
+          self.ch_is('\t') ||
+          self.ch_is('\r') { self.bump(); }
+  }
+
   pub fn parse(&mut self) -> Vec<Entry> {
     let mut entries: Vec<Entry> = Vec::new();
+    self.bump();
+
     loop {
-      let ch = match self.source.chars().next() {
+      self.parse_whitespace();
+      let ch = match self.ch {
         Some(ch) => ch,
         None => { break; }
       };
@@ -48,17 +57,24 @@ impl Parser {
     entries
   }
 
-  pub fn parse_entry(&mut self) -> Entry {
-    self.bump();
+  fn parse_entry(&mut self) -> Entry {
     let id = self.parse_identifier();
-    self.parse_entity(id)
+    match self.ch {
+      Some(_) => return self.parse_entity(id),
+      None => panic!()
+    };
   }
 
-  pub fn parse_entity(&self, id: String) -> Entry {
-    Entry::Entity{id: id}
+  fn parse_entity(&mut self, id: String) -> Entry {
+    if !self.ch_is(' ') {
+      panic!();
+    }
+    self.parse_whitespace();
+    let value = self.parse_value();
+    Entry::Entity{id: id, value:value}
   }
 
-  pub fn parse_identifier(&mut self) -> String {
+  fn parse_identifier(&mut self) -> String {
     let mut id = String::new();
 
     loop {
@@ -68,32 +84,50 @@ impl Parser {
         None => break,
       };
 
-      id.push(ch);
-      break;
+      match ch {
+        'a'...'z' | 'A'...'Z' | '0'...'9' | '_' => id.push(ch),
+        _ => break,
+      }
     }
 
     id
   }
-}
 
-/*  ---------------------- */
+  fn parse_value(&mut self) -> String {
+    match self.ch {
+      Some('"') | Some('\'') => self.parse_string(),
+      _ => panic!()
+    }
+  }
 
-fn read_file() -> String {
-  let s = "<entity1>".to_string();
-  return s
+  fn parse_string(&mut self) -> String {
+    let mut s = String::new();
+    let quote = self.ch.unwrap();
+
+    loop {
+      self.bump();
+      match self.ch {
+        Some(c) if c == quote => { self.bump(); break },
+        Some(c) => s.push(c),
+        None => panic!()
+      }
+    }
+    s
+  }
 }
 
 fn main() {
-  let source = read_file();
-  let mut parser = Parser::new(source);
+  //let v: std::str::Chars<'a> = "abc åäö".chars();
+  let mut parser = Parser::new("<entity1 \"foo\">");
   let mut entries = parser.parse();
 
   let entry1 = entries.pop();
-
-  let id = match entry1 {
-    Some(Entry::Entity{id}) => id.clone(),
-    None => "".to_string()
+  let (id, value) = match entry1 {
+    Some(Entry::Entity{id, value}) => (id.clone(), value.clone()),
+    None => ("".to_string(), "".to_string())
   };
 
-  println!("The result is {}", id);
+  println!("The result id is {}", id);
+  println!("The result value is {}", value);
+
 }
