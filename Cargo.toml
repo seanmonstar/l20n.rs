@@ -1,5 +1,4 @@
 [package]
-
 name = "l20n"
-version = "0.1.0-pre"
-authors = ["Sean McArthur <sean.monstar@gmail.com"]
+version = "0.1.0"
+authors = ["Zibi Braniecki <gandalf@mozilla.com>"]

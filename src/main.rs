@@ -1,9 +1,13 @@
 use std::collections::HashMap;
 
+use std::fs::File;
+use std::io::BufReader;
+use std::io::Read;
+
 pub type ParseResult<T> = Result<T, ParseError>;
 
 pub struct ParseError {
-  pub pos: u8,
+  pub pos: u16,
 }
 
 pub enum Value {
@@ -18,7 +22,7 @@ pub enum Entry {
 pub struct Parser<'a> {
   source: std::str::Chars<'a>,
   ch: Option<char>,
-  pos: u8
+  pos: u16
 }
 
 impl<'a> Parser<'a> {
@@ -133,28 +137,50 @@ impl<'a> Parser<'a> {
 
   fn parse_hash(&mut self) -> Value {
     self.bump();
-    self.parse_whitespace();
 
     let mut map = HashMap::new();
     let mut default = None;
 
     loop {
+      self.parse_whitespace();
       let id = self.parse_identifier();
       self.parse_whitespace();
-      self.bump();
+      match self.ch {
+        Some(':') => self.bump(),
+        _ => panic!()
+      }
       self.parse_whitespace();
       let value = self.parse_value();
-      self.bump();
+      self.parse_whitespace();
       map.insert(id, value);
-      break;
+
+      match self.ch {
+        Some(',') => self.bump(),
+        _ => break
+      }
+    }
+
+    match self.ch {
+      Some('}') => self.bump(),
+      _ => panic!()
     }
     Value::Hash(map, default)
   }
 }
 
+
+ 
 fn read_file() -> String {
-  let s = "<entity1 {one: 'foo'}> <entity2 'foo'>".to_string();
-  return s
+  let file = match File::open("example.l20n") {
+      Ok(file) => file,
+      Err(..)  => panic!("room"),
+  };
+
+  let mut reader = BufReader::new(&file);
+  let buffer_string = &mut String::new();
+  reader.read_to_string(buffer_string);
+  
+  buffer_string.clone()
 }
 
 fn main() {
