@@ -1,9 +1,18 @@
-pub enum Entry {
-  Entity {id: String, value: String}
+use std::collections::HashMap;
+
+pub type ParseResult<T> = Result<T, ParseError>;
+
+pub struct ParseError {
+  pub pos: u8,
 }
 
 pub enum Value {
-  Str(String)
+  Str(String),
+  Hash(HashMap<String, Value>, Option<String>)
+}
+
+pub enum Entry {
+  Entity {id: String, value: Value}
 }
 
 pub struct Parser<'a> {
@@ -99,14 +108,15 @@ impl<'a> Parser<'a> {
     id
   }
 
-  fn parse_value(&mut self) -> String {
+  fn parse_value(&mut self) -> Value {
     match self.ch {
       Some('"') | Some('\'') => self.parse_string(),
+      Some('{') => self.parse_hash(),
       _ => panic!()
     }
   }
 
-  fn parse_string(&mut self) -> String {
+  fn parse_string(&mut self) -> Value {
     let mut s = String::new();
     let quote = self.ch.unwrap();
 
@@ -118,12 +128,32 @@ impl<'a> Parser<'a> {
         None => panic!()
       }
     }
-    s
+    Value::Str(s)
+  }
+
+  fn parse_hash(&mut self) -> Value {
+    self.bump();
+    self.parse_whitespace();
+
+    let mut map = HashMap::new();
+    let mut default = None;
+
+    loop {
+      let id = self.parse_identifier();
+      self.parse_whitespace();
+      self.bump();
+      self.parse_whitespace();
+      let value = self.parse_value();
+      self.bump();
+      map.insert(id, value);
+      break;
+    }
+    Value::Hash(map, default)
   }
 }
 
 fn read_file() -> String {
-  let s = "<entity1 \"foo\"> <entity2 \"foo2\">".to_string();
+  let s = "<entity1 {one: 'foo'}> <entity2 'foo'>".to_string();
   return s
 }
 
@@ -137,12 +167,11 @@ fn main() {
       break;
     }
     let entry1 = Some(entries.remove(0));
-    let (id, value) = match entry1 {
-      Some(Entry::Entity{id, value}) => (id.clone(), value.clone()),
+    let id = match entry1 {
+      Some(Entry::Entity{id, value}) => id.clone(),
       None => break
     };
 
-    println!("The result id is {}", id);
-    println!("The result value is {}", value);
+    println!("ID: {}", id);
   }
 }
