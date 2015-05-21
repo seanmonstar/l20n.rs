@@ -2,3 +2,6 @@
 name = "l20n"
 version = "0.1.0"
 authors = ["Zibi Braniecki <gandalf@mozilla.com>"]
+
+[lib]
+name = "parser"
