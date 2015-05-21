@@ -46,12 +46,11 @@ impl<'a> Parser<'a> {
       self.parse_whitespace();
       let ch = match self.ch {
         Some(ch) => ch,
-        None => { break; }
+        None => break
       };
 
       if ch == '<' {
         entries.push(self.parse_entry());
-        break;
       }
     }
     entries
@@ -59,10 +58,17 @@ impl<'a> Parser<'a> {
 
   fn parse_entry(&mut self) -> Entry {
     let id = self.parse_identifier();
-    match self.ch {
-      Some(_) => return self.parse_entity(id),
+    let val = match self.ch {
+      Some(_) => self.parse_entity(id),
       None => panic!()
     };
+
+    self.parse_whitespace();
+    if !self.ch_is('>') {
+      panic!();
+    }
+    self.bump();
+    val
   }
 
   fn parse_entity(&mut self, id: String) -> Entry {
@@ -116,18 +122,27 @@ impl<'a> Parser<'a> {
   }
 }
 
+fn read_file() -> String {
+  let s = "<entity1 \"foo\"> <entity2 \"foo2\">".to_string();
+  return s
+}
+
 fn main() {
-  //let v: std::str::Chars<'a> = "abc åäö".chars();
-  let mut parser = Parser::new("<entity1 \"foo\">");
+  let source = read_file();
+  let mut parser = Parser::new(source.trim());
   let mut entries = parser.parse();
 
-  let entry1 = entries.pop();
-  let (id, value) = match entry1 {
-    Some(Entry::Entity{id, value}) => (id.clone(), value.clone()),
-    None => ("".to_string(), "".to_string())
-  };
+  loop {
+    if entries.is_empty() {
+      break;
+    }
+    let entry1 = Some(entries.remove(0));
+    let (id, value) = match entry1 {
+      Some(Entry::Entity{id, value}) => (id.clone(), value.clone()),
+      None => break
+    };
 
-  println!("The result id is {}", id);
-  println!("The result value is {}", value);
-
+    println!("The result id is {}", id);
+    println!("The result value is {}", value);
+  }
 }
