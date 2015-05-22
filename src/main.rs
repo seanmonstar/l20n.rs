@@ -6,9 +6,11 @@ use parser::Entry;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
+
+use std::env;
  
-fn read_file() -> String {
-  let file = match File::open("example.l20n") {
+fn read_file(path: String) -> String {
+  let file = match File::open(path) {
       Ok(file) => file,
       Err(..)  => panic!("room"),
   };
@@ -20,11 +22,7 @@ fn read_file() -> String {
   buffer_string.clone()
 }
 
-fn main() {
-  let source = read_file();
-  let mut parser = Parser::new(source.trim());
-  let mut entries = parser.parse();
-
+fn print_entities(entries: &mut Vec<Entry>) {
   loop {
     if entries.is_empty() {
       break;
@@ -36,5 +34,17 @@ fn main() {
     };
 
     println!("ID: {}", id);
+  }
+}
+
+fn main() {
+  if let Some(arg1) = env::args().nth(1) {
+    let source = read_file(arg1);
+    let mut parser = Parser::new(source.trim());
+    let mut entries = parser.parse();
+    print_entities(&mut entries);
+  } else {
+    println!("You must pass a path to an l20n file");
+    return;
   }
 }
