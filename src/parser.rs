@@ -1,11 +1,5 @@
 use std::collections::HashMap;
 
-pub type ParseResult<T> = Result<T, ParseError>;
-
-pub struct ParseError {
-  pub pos: u16,
-}
-
 pub enum Value {
   Str(String),
   Hash(HashMap<String, Value>, Option<String>)
@@ -135,7 +129,6 @@ impl<'a> Parser<'a> {
     self.bump();
 
     let mut map = HashMap::new();
-    let mut default = None;
 
     loop {
       self.parse_whitespace();
@@ -160,6 +153,6 @@ impl<'a> Parser<'a> {
       Some('}') => self.bump(),
       _ => panic!()
     }
-    Value::Hash(map, default)
+    Value::Hash(map, None)
   }
 }

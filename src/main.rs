@@ -17,7 +17,9 @@ fn read_file(path: String) -> String {
 
   let mut reader = BufReader::new(&file);
   let buffer_string = &mut String::new();
-  reader.read_to_string(buffer_string);
+  reader.read_to_string(buffer_string)
+    .ok()
+    .expect("Failed to read string");
   
   buffer_string.clone()
 }
