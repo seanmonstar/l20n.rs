@@ -1,7 +1,3 @@
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 //! L20n implementation for localization
 //!
 //! This crate provides an interface to use l20n files to localize your
@@ -37,20 +33,13 @@
 //! }
 //! ```
 
-#![crate_name = "l20n"]
-#![license = "MPLv2"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
-#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://static.rust-lang.org/doc/master")]
-// FIXME: rust#14450: add deny(warnings)
-#![deny(missing_doc)]
+#![deny(missing_docs)]
+//#![cfg_attr(test, deny(warnings))]
 
-extern crate serialize;
+extern crate serde;
 
 pub use context::{Locale, LocalizeResult, LocalizeError};
-pub use data::{Data, Decoder, Encoder, DecodeError, EncodeError};
+pub use data::{DecodeError, EncodeError};
 pub use compiler::ResolveError;
 pub use parser::{ParseError, ParseErrorKind};
 
