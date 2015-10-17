@@ -2,13 +2,15 @@ language: rust
 rust:
   - stable
   - beta
+  - nightly
 sudo: false
 
 after_success: |
+    [ $TRAVIS_RUST_VERSION = stable ] &&
     [ $TRAVIS_BRANCH = master ] &&
     [ $TRAVIS_PULL_REQUEST = false ] &&
-    cargo doc &&
-    echo '<meta http-equiv=refresh content=0;url=l20n.rs/index.html>' > target/doc/index.html &&
+    cargo doc --no-deps &&
+    echo '<meta http-equiv=refresh content=0;url=l20n/index.html>' > target/doc/index.html &&
     pip install --user ghp-import &&
     /home/travis/.local/bin/ghp-import -n target/doc &&
     git push -fq https://${TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
