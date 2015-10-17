@@ -13,13 +13,11 @@ pub fn compile(source: &str) -> Result<HashMap<String, parser::Entry>, ParseErro
     let p = Parser::new(source.chars());
     let entries = try!(p.parse());
 
-    // TODO: parse all imports
-
     let mut map = HashMap::new();
 
-    for mut entry in entries.into_iter() {
+    for mut entry in entries {
         let id = match entry {
-            parser::Comment(..) | parser::Import(..) => continue,
+            parser::Comment(..) => continue,
             parser::Macro(ref id, _, _) => id.clone(),
             parser::Entity(ref id, ref mut value, ref indices, ref mut attrs)    => {
                 // while we're here, fix up and Hash values with default indices

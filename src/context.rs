@@ -9,27 +9,28 @@ use parser;
 
 use self::LocalizeError::*;
 
+/*
+/// The current L20n context.
 pub struct Context {
     locales: HashMap<String, Locale>,
     default_locale: String
 }
 
 impl Context {
+    /// Creates a new Context, using `i-default` as the default locale.
     pub fn new() -> Context {
         Context::with_default(String::from("i-default"))
     }
 
-    pub fn with_default(locale: String) -> Context {
+    /// Create a new Context with the specified default locale.
+    pub fn with_default<S: Into<String>>(locale: S) -> Context {
         let mut locales = HashMap::new();
-        locales.insert(locale.clone(), Locale::new());
+        locales.insert(locale.into(), Locale::new());
         Context {
             locales: locales,
             default_locale: locale
         }
     }
-
-
-    /*
     pub fn add_resource(&mut self, res: String) -> Result<(), parser::ParseError>{
         self.add_locale_resource("i-default".to_string(), res) //self.default_locale.clone(), res)
     }
@@ -49,10 +50,10 @@ impl Context {
     pub fn get_locale<'a>(&'a self, name: &str) -> Option<&'a Locale> {
         self.locales.find_equiv(&name)
     }
-    */
 
 }
 
+*/
 
 /// A Locale contains all the resources for a specific language.
 pub struct Locale {
@@ -63,7 +64,7 @@ pub struct Locale {
 #[derive(Debug)]
 pub enum LocalizeError {
     /// Wraps a DecodeError.
-    DecodeError(data::DecodeError),
+    DecodeError(::serde::de::value::Error),
     /// Wraps an EncodeError.
     EncodeError(data::EncodeError),
     /// Wraps a ResolveError.
@@ -112,11 +113,16 @@ impl Locale {
     fn localize_data_raw<T: serde::Deserialize>(&self, data: data::Data) -> LocalizeResult<T> {
         let mut map = HashMap::new();
         let ctx = ResolveContext::new(&self.resources, &data);
-        for (id, entry) in self.resources.iter() {
-            map.insert(id.clone(), match entry.resolve_data(&ctx) {
-                Ok(d) => d,
-                Err(e) => return Err(ResolveError(e))
-            });
+        for (id, entry) in &self.resources {
+            match entry {
+                &parser::Entity(..) => {
+                    map.insert(id.clone(), match entry.resolve_data(&ctx) {
+                        Ok(d) => d,
+                        Err(e) => return Err(ResolveError(e))
+                    });
+                }
+                _ => () // dont localize comments or macros
+            }
         }
 
         let mut dec = data::Decoder::new(data::Data::Map(map));
@@ -131,26 +137,21 @@ impl Locale {
 mod tests {
 
     use std::collections::HashMap;
-    use serde;
 
     use super::Locale;
 
+    /* custom serde impls are hard
+    use serde;
     struct Translated {
         hi: String,
         factorial: String,
         mail: String,
     }
 
-    impl serde::Deserialize for Translated {
-        fn deserialize<D>(d: &mut D) -> Result<Translated, D::Error>
-        where D: serde::Deserializer {
-            Ok(Translated {
-                hi: try!(serde::Deserialize::deserialize(d)),
-                factorial: try!(serde::Deserialize::deserialize(d)),
-                mail: try!(serde::Deserialize::deserialize(d)),
-            })
-        }
+    struct Values {
+        num: i32
     }
+    */
 
     #[test]
     fn test_locale() {
@@ -168,11 +169,11 @@ mod tests {
         let mut data = HashMap::new();
         data.insert("number", 3);
 
-        let t: Translated = locale.localize_data(data).unwrap();
+        let t: HashMap<String, String> = locale.localize_data(data).unwrap();
 
-        assert_eq!(t.hi, "Hello, Rust Lang!");
-        assert_eq!(t.factorial, "Factorial of 3 is 6.");
-        assert_eq!(t.mail, "Email in your inbox: too many.");
+        assert_eq!(t["hi"], "Hello, Rust Lang!");
+        assert_eq!(t["factorial"], "Factorial of 3 is 6.");
+        assert_eq!(t["mail"], "Email in your inbox: too many.");
     }
 
 }

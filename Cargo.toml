@@ -4,6 +4,9 @@ name = "l20n"
 version = "0.1.0"
 authors = ["Sean McArthur <sean.monstar@gmail.com"]
 license = "MIT"
+description = "An l20n implementation for Rust"
+repository = "https://github.com/seanmonstar/l20n.rs"
+keywords = ["l20n", "i18n", "l10n", "internationalization", "localization"]
 
 [dependencies]
 serde = "0.6"

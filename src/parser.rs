@@ -61,7 +61,6 @@ pub enum ParseErrorKind {
 pub enum Entry {
     Entity(String, Value, Vec<Expr>, Vec<Attr>),
     Macro(String, Vec<Expr>, Expr),
-    Import(String),
     Comment(String),
 }
 

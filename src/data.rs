@@ -77,18 +77,17 @@ impl serde::Serializer for Encoder {
         self.data.push(List(vec![]));
         v.visit(self).map(|_| ())
     }
-    fn visit_seq_elt<V>(&mut self, _v: V) -> EncoderResult where V: serde::Serialize {
-        unimplemented!()
-        /*
+    fn visit_seq_elt<V>(&mut self, v: V) -> EncoderResult where V: serde::Serialize {
         match self.data.pop() {
-            Some(List(list)) => {
-                list.push(try!(v.serialize(self)));
+            Some(List(mut list)) => {
+                let mut elt_encoder = Encoder::new();
+                try!(v.serialize(&mut elt_encoder));
+                list.push(elt_encoder.data.pop().unwrap());
                 self.data.push(List(list));
                 Ok(())
             },
             _ => Err(EncodeError::UnsupportedType)
         }
-        */
     }
     fn visit_map<V>(&mut self, mut v: V) -> EncoderResult where V: serde::ser::MapVisitor {
         self.data.push(Map(HashMap::new()));
@@ -128,49 +127,34 @@ impl Decoder {
     }
 }
 
-pub type DecodeResult<T> = Result<T, DecodeError>;
-
-/// Errors that can occur decoding an L20n file into a Rust value.
-#[derive(Debug)]
-pub enum DecodeError {
-    /// The type being requested doesn't match what the L20n file outputs.
-    WrongType,
-    /// A string was request from L20n that wasn't in the resources.
-    MissingField(String),
-}
-
-impl serde::de::Error for DecodeError {
-    fn syntax(msg: &str) -> DecodeError {
-        DecodeError::WrongType
-    }
-
-    fn end_of_stream() -> DecodeError {
-        unreachable!()
-    }
-
-    fn unknown_field(_field: &str) -> DecodeError {
-        unimplemented!()
-    }
-
-    fn missing_field(field: &'static str) -> DecodeError {
-        DecodeError::MissingField(field.to_owned())
-    }
-}
-
 impl serde::Deserializer for Decoder {
-    type Error = DecodeError;
+    type Error = serde::de::value::Error;
 
     fn visit<V>(&mut self, mut visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor {
+        println!("visit {:?}", self.data);
         match self.data.pop() {
             Some(Data::Null) => visitor.visit_unit(),
             Some(Data::Bool(b)) => visitor.visit_bool(b),
             Some(Data::Num(n)) => visitor.visit_i64(n),
             Some(Data::Str(s)) => visitor.visit_str(&s),
-            Some(Data::List(_list)) => unimplemented!(),
-            Some(Data::Map(map)) => unimplemented!(),
+            Some(Data::List(list)) => {
+                let len = list.len();
+                visitor.visit_seq(serde::de::value::SeqDeserializer::new(list.into_iter(), len))
+            }
+            Some(Data::Map(map)) => {
+                let len = map.len();
+                visitor.visit_map(serde::de::value::MapDeserializer::new(map.into_iter(), len))
+            },
             None => unreachable!()
         }
+    }
+}
+
+impl serde::de::value::ValueDeserializer for Data {
+    type Deserializer = Decoder;
+    fn into_deserializer(self) -> Decoder {
+        Decoder::new(self)
     }
 }
 

@@ -6,40 +6,30 @@
 //! # Example usage
 //!
 //! ```rust
-//! extern crate serialize;
 //! extern crate l20n;
 //!
-//! use l20n::Locale;
-//!
-//! #[deriving(Encodable)]
-//! struct Env {
-//!   name: &'static str
-//! }
-//!
-//! #[deriving(Decodable)]
-//! struct Strings {
-//!   hi: String
-//! }
+//! use std::collections::HashMap;
 //!
 //! fn main() {
-//!   let mut locale = Locale::new();
-//!   locale.add_resource(r#"
-//!   <hi "Hello {{ $name }}!">
-//!   "#).unwrap();
+//!     let mut locale = l20n::Locale::new();
+//!     locale.add_resource(r#"
+//!     <hi "Hello {{ $name }}!">
+//!     "#).unwrap();
 //!
-//!   let env = Env { name: "Rust" };
-//!   let strs: Strings = locale.localize_data(env).unwrap();
-//!   assert_eq!(strs.hi.as_slice(), "Hello Rust!");
+//!     let mut env = HashMap::new();
+//!     env.insert("name", "Rust");
+//!     let strs: HashMap<String, String> = locale.localize_data(env).unwrap();
+//!     assert_eq!(strs["hi"], "Hello Rust!");
 //! }
 //! ```
 
 #![deny(missing_docs)]
-//#![cfg_attr(test, deny(warnings))]
+#![cfg_attr(test, deny(warnings))]
 
 extern crate serde;
 
 pub use context::{Locale, LocalizeResult, LocalizeError};
-pub use data::{DecodeError, EncodeError};
+pub use data::{EncodeError};
 pub use compiler::ResolveError;
 pub use parser::{ParseError, ParseErrorKind};
 
