@@ -132,7 +132,6 @@ impl serde::Deserializer for Decoder {
 
     fn visit<V>(&mut self, mut visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor {
-        println!("visit {:?}", self.data);
         match self.data.pop() {
             Some(Data::Null) => visitor.visit_unit(),
             Some(Data::Bool(b)) => visitor.visit_bool(b),
