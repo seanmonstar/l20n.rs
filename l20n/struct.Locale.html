@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Locale` struct in crate `l20n`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Locale">
+
+    <title>l20n::Locale - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='index.html'>l20n</a></p><script>window.sidebarCurrent = {name: 'Locale', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>l20n</a>::<wbr><a class='struct' href=''>Locale</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                [<span class='inner'>&#x2212;</span>]
+            </a>
+        </span><a id='src-444' class='srclink' href='../src/l20n/context.rs.html#59-61' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Locale {
+    // some fields omitted
+}</pre><div class='docblock'><p>A Locale contains all the resources for a specific language.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><code>impl <a class='struct' href='../l20n/struct.Locale.html' title='l20n::Locale'>Locale</a></code></h3><div class='impl-items'><h4 id='method.new' class='method'><code>fn <a href='#method.new' class='fnname'>new</a>() -&gt; <a class='struct' href='../l20n/struct.Locale.html' title='l20n::Locale'>Locale</a></code></h4>
+<div class='docblock'><p>Creates a new empty Locale.</p>
+</div><h4 id='method.add_resource' class='method'><code>fn <a href='#method.add_resource' class='fnname'>add_resource</a>(&amp;mut self, res: &amp;<a href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>, <a class='struct' href='../l20n/struct.ParseError.html' title='l20n::ParseError'>ParseError</a>&gt;</code></h4>
+<div class='docblock'><p>Add a L20n string resource, and it will be parsed.</p>
+</div><h4 id='method.localize' class='method'><code>fn <a href='#method.localize' class='fnname'>localize</a>&lt;T: <a class='trait' href='https://serde-rs.github.io/serde/serde/serde/de/trait.Deserialize.html' title='serde::de::Deserialize'>Deserialize</a>&gt;(&amp;self) -&gt; <a class='type' href='../l20n/type.LocalizeResult.html' title='l20n::LocalizeResult'>LocalizeResult</a>&lt;T&gt;</code></h4>
+<div class='docblock'><p>Resolves all the resouces into Strings, and returns a Deserialize
+object of your choosing.</p>
+</div><h4 id='method.localize_data' class='method'><code>fn <a href='#method.localize_data' class='fnname'>localize_data</a>&lt;T: <a class='trait' href='https://serde-rs.github.io/serde/serde/serde/de/trait.Deserialize.html' title='serde::de::Deserialize'>Deserialize</a>, D: <a class='trait' href='https://serde-rs.github.io/serde/serde/serde/ser/trait.Serialize.html' title='serde::ser::Serialize'>Serialize</a>&gt;(&amp;self, data: D) -&gt; <a class='type' href='../l20n/type.LocalizeResult.html' title='l20n::LocalizeResult'>LocalizeResult</a>&lt;T&gt;</code></h4>
+<div class='docblock'><p>Same as <code>localize</code>, but you provide environment Data for the L20n
+files to use.</p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "l20n";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>

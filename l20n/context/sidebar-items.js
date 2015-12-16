@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["LocalizeError","An enum of the various errors that can occur during localization."]],"struct":[["Locale","A Locale contains all the resources for a specific language."]],"type":[["LocalizeResult","A Result of trying to localize."]]});

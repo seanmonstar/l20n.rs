@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ResolveError","Errors that can occur when resolving a set of l20n resources into strings. These errors are cause by problems in the l20n file, or incorrect Data provided when localizing."]],"trait":[["Resolve","Resolve an L20n resource into Data."]]});

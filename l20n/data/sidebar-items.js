@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["EncodeError","Errors that occur encoding environment data into something the L20n resources can use."]]});

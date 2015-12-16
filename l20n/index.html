@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `l20n` crate.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, l20n">
+
+    <title>l20n - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'></p><script>window.sidebarCurrent = {name: 'l20n', ty: 'mod', relpath: '../'};</script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content mod">
+<h1 class='fqn'><span class='in-band'>Crate <a class='mod' href=''>l20n</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                [<span class='inner'>&#x2212;</span>]
+            </a>
+        </span><a id='src-0' class='srclink' href='../src/l20n/lib.rs.html#1-39' title='goto source code'>[src]</a></span></h1>
+<div class='docblock'><p>L20n implementation for localization</p>
+
+<p>This crate provides an interface to use l20n files to localize your
+application.</p>
+
+<h1 id='example-usage' class='section-header'><a href='#example-usage'>Example usage</a></h1><pre class='rust rust-example-rendered'>
+<span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>l20n</span>;
+
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>collections</span>::<span class='ident'>HashMap</span>;
+
+<span class='kw'>fn</span> <span class='ident'>main</span>() {
+    <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>locale</span> <span class='op'>=</span> <span class='ident'>l20n</span>::<span class='ident'>Locale</span>::<span class='ident'>new</span>();
+    <span class='ident'>locale</span>.<span class='ident'>add_resource</span>(<span class='string'>r#&quot;
+    &lt;hi &quot;Hello {{ $name }}!&quot;&gt;
+    &quot;#</span>).<span class='ident'>unwrap</span>();
+
+    <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>env</span> <span class='op'>=</span> <span class='ident'>HashMap</span>::<span class='ident'>new</span>();
+    <span class='ident'>env</span>.<span class='ident'>insert</span>(<span class='string'>&quot;name&quot;</span>, <span class='string'>&quot;Rust&quot;</span>);
+    <span class='kw'>let</span> <span class='ident'>strs</span>: <span class='ident'>HashMap</span><span class='op'>&lt;</span><span class='ident'>String</span>, <span class='ident'>String</span><span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>locale</span>.<span class='ident'>localize_data</span>(<span class='ident'>env</span>).<span class='ident'>unwrap</span>();
+    <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>strs</span>[<span class='string'>&quot;hi&quot;</span>], <span class='string'>&quot;Hello Rust!&quot;</span>);
+}</pre>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table>
+                    <tr class=' module-item'>
+                        <td><a class='struct' href='struct.Locale.html'
+                               title='l20n::Locale'>Locale</a></td>
+                        <td class='docblock short'>
+                             <p>A Locale contains all the resources for a specific language.</p>
+
+                        </td>
+                    </tr>
+                
+                    <tr class=' module-item'>
+                        <td><a class='struct' href='struct.ParseError.html'
+                               title='l20n::ParseError'>ParseError</a></td>
+                        <td class='docblock short'>
+                             <p>An error occurred trying to parse an L20n resource. The L20n file is
+invalid.</p>
+
+                        </td>
+                    </tr>
+                </table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table>
+                    <tr class=' module-item'>
+                        <td><a class='enum' href='enum.EncodeError.html'
+                               title='l20n::EncodeError'>EncodeError</a></td>
+                        <td class='docblock short'>
+                             <p>Errors that occur encoding environment data into something the L20n
+resources can use.</p>
+
+                        </td>
+                    </tr>
+                
+                    <tr class=' module-item'>
+                        <td><a class='enum' href='enum.LocalizeError.html'
+                               title='l20n::LocalizeError'>LocalizeError</a></td>
+                        <td class='docblock short'>
+                             <p>An enum of the various errors that can occur during localization.</p>
+
+                        </td>
+                    </tr>
+                
+                    <tr class=' module-item'>
+                        <td><a class='enum' href='enum.ParseErrorKind.html'
+                               title='l20n::ParseErrorKind'>ParseErrorKind</a></td>
+                        <td class='docblock short'>
+                             <p>The description of the ParseError that occurred.</p>
+
+                        </td>
+                    </tr>
+                
+                    <tr class=' module-item'>
+                        <td><a class='enum' href='enum.ResolveError.html'
+                               title='l20n::ResolveError'>ResolveError</a></td>
+                        <td class='docblock short'>
+                             <p>Errors that can occur when resolving a set of l20n resources into strings.
+These errors are cause by problems in the l20n file, or incorrect Data
+provided when localizing.</p>
+
+                        </td>
+                    </tr>
+                </table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>
+<table>
+                    <tr class=' module-item'>
+                        <td><a class='type' href='type.LocalizeResult.html'
+                               title='l20n::LocalizeResult'>LocalizeResult</a></td>
+                        <td class='docblock short'>
+                             <p>A Result of trying to localize.</p>
+
+                        </td>
+                    </tr>
+                </table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "l20n";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>

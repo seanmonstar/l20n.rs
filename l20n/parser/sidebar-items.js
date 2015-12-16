@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ParseErrorKind","The description of the ParseError that occurred."]],"struct":[["ParseError","An error occurred trying to parse an L20n resource. The L20n file is invalid."]]});
