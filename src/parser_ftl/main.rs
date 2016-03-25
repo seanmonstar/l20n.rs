@@ -12,7 +12,12 @@ pub enum Value {
 }
 
 pub enum Entry {
-  Entity {id: String, value: Value}
+  Entity {id: Identifier, value: Value}
+}
+
+pub struct Identifier {
+  pub name: String,
+  pub namespace: String
 }
 
 pub struct Parser<'a> {
@@ -40,17 +45,22 @@ impl<'a> Parser<'a> {
     self.ch == Some(ch)
   }
 
-  fn parse_whitespace(&mut self) {
+  fn get_ws(&mut self) {
     while self.ch_is(' ') ||
           self.ch_is('\n') ||
           self.ch_is('\t') ||
           self.ch_is('\r') { self.bump(); }
   }
 
+  fn get_line_ws(&mut self) {
+    while self.ch_is(' ') ||
+          self.ch_is('\t') { self.bump(); }
+  }
+
   pub fn parse(&mut self) -> Vec<Entry> {
     let mut entries: Vec<Entry> = Vec::new();
 
-    self.parse_whitespace();
+    self.get_ws();
 
     self.bump();
 
@@ -59,36 +69,58 @@ impl<'a> Parser<'a> {
         break;
       }
 
-      entries.push(self.parse_entry());
-      self.parse_whitespace();
+      entries.push(self.get_entry());
+      self.get_ws();
     }
     entries
   }
 
-  fn parse_entry(&mut self) -> Entry {
-    let val = self.parse_entity();
+  fn get_entry(&mut self) -> Entry {
+    let val = self.get_entity();
 
     val
   }
 
-  fn parse_entity(&mut self) -> Entry {
-    let id = self.parse_identifier();
-    self.parse_whitespace();
+  fn get_entity(&mut self) -> Entry {
+    let id = self.get_identifier(true);
+    self.get_line_ws();
 
     if !self.ch_is('=') {
       panic!();
     }
     self.bump();
 
-    self.parse_whitespace();
+    self.get_line_ws();
 
-    let value = self.parse_pattern();
+    let value = self.get_pattern();
 
     Entry::Entity{id: id, value: value}
   }
 
-  fn parse_identifier(&mut self) -> String {
+  fn get_identifier(&mut self, ns_sep: bool) -> Identifier {
     let mut id = String::new();
+    let mut namespace = String::new();
+
+    if ns_sep {
+      let ns = self.get_identifier(false);
+      if self.ch_is(':') {
+        namespace = ns.name;
+        self.bump();
+      } else if ns.name.len() > 0 {
+        id = ns.name;
+      }
+    }
+
+    let ch = match self.ch {
+      Some(c) => c,
+      None => panic!(),
+    };
+
+    match ch {
+      'a'...'z' | 'A'...'Z' | '_' => id.push(ch),
+        _ => panic!(),
+    }
+    self.bump();
 
     loop {
       let ch = match self.ch {
@@ -97,16 +129,16 @@ impl<'a> Parser<'a> {
       };
 
       match ch {
-        'a'...'z' | 'A'...'Z' | '0'...'9' | '_' => id.push(ch),
+        'a'...'z' | 'A'...'Z' | '0'...'9' | '_' | '-' => id.push(ch),
         _ => break,
       }
       self.bump();
     }
 
-    id
+    Identifier{name: id, namespace: namespace}
   }
 
-  fn parse_pattern(&mut self) -> Value {
+  fn get_pattern(&mut self) -> Value {
     let mut s = String::new();
     let mut elements = vec![];
 

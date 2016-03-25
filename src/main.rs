@@ -7,6 +7,7 @@ use parser_l20n::Entry as L20nEntry;
 use parser_ftl::Parser as FTLParser;
 use parser_ftl::Entry as FTLEntry;
 use parser_ftl::Value as FTLValue;
+use parser_ftl::Identifier as FTLIdentifier;
 
 use std::fs::File;
 use std::io::BufReader;
@@ -44,6 +45,18 @@ fn print_l20n_entities(entries: &mut Vec<L20nEntry>) {
   }
 }
 
+fn get_ftl_id(id: &FTLIdentifier) -> String {
+  if id.namespace.len() == 0 {
+    return id.name.to_string();
+  }
+  let ns = id.namespace.to_string();
+  let name = id.name.to_string();
+  let c = ":";
+
+  let full_id = ns + c + &name;
+  return full_id;
+}
+
 fn print_ftl_entities(entries: &mut Vec<FTLEntry>) {
   loop {
     if entries.is_empty() {
@@ -53,7 +66,7 @@ fn print_ftl_entities(entries: &mut Vec<FTLEntry>) {
       FTLEntry::Entity {id, value } => {
         let FTLValue::Pattern {source, ..} = value;
 
-        println!("ID: {}, VALUE: {}", id, source);
+        println!("ID: {}, VALUE: {}", get_ftl_id(&id), source);
       }
     }
   }
