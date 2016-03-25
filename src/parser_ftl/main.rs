@@ -1,8 +1,14 @@
-use std::collections::HashMap;
+pub enum Expression {
+  IdentifierExpression {name: String}
+}
+
+pub enum PatternElement {
+  TextElement {value: String},
+  Placeable {expressions: Vec<Expression>}
+}
 
 pub enum Value {
-  Str(String),
-  Hash(HashMap<String, Value>, Option<String>)
+  Pattern {source: String, elements: Vec<PatternElement>}
 }
 
 pub enum Entry {
@@ -102,6 +108,7 @@ impl<'a> Parser<'a> {
 
   fn parse_pattern(&mut self) -> Value {
     let mut s = String::new();
+    let mut elements = vec![];
 
     loop {
       self.bump();
@@ -111,6 +118,9 @@ impl<'a> Parser<'a> {
         None => { break }
       }
     }
-    Value::Str(s)
+
+    elements.push(PatternElement::TextElement {value: s.clone()});
+
+    Value::Pattern{source: s, elements: elements}
   }
 }
