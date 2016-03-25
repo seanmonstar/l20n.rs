@@ -84,7 +84,7 @@ impl<'a> Parser<'a> {
 
     let value = self.parse_pattern();
 
-    Entry::Entity{id: id, value:value}
+    Entry::Entity{id: id, value: value}
   }
 
   fn parse_identifier(&mut self) -> String {
@@ -111,12 +111,12 @@ impl<'a> Parser<'a> {
     let mut elements = vec![];
 
     loop {
-      self.bump();
       match self.ch {
         Some(c) if c == '\n' => { self.bump(); break },
         Some(c) => s.push(c),
         None => { break }
       }
+      self.bump();
     }
 
     elements.push(PatternElement::TextElement {value: s.clone()});
