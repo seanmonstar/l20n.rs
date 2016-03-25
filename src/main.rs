@@ -1,7 +1,11 @@
-extern crate parser;
+extern crate parser_l20n;
+extern crate parser_ftl;
 
-use parser::Parser;
-use parser::Entry;
+use parser_l20n::Parser as L20nParser;
+use parser_l20n::Entry as L20nEntry;
+
+use parser_ftl::Parser as FTLParser;
+use parser_ftl::Entry as FTLEntry;
 
 use std::fs::File;
 use std::io::BufReader;
@@ -24,14 +28,29 @@ fn read_file(path: String) -> String {
   buffer_string.clone()
 }
 
-fn print_entities(entries: &mut Vec<Entry>) {
+fn print_l20n_entities(entries: &mut Vec<L20nEntry>) {
   loop {
     if entries.is_empty() {
       break;
     }
     let entry1 = Some(entries.remove(0));
     let id = match entry1 {
-      Some(Entry::Entity{id, value}) => id.clone(),
+      Some(L20nEntry::Entity{ id, .. }) => id.clone(),
+      None => break
+    };
+
+    println!("ID: {}", id);
+  }
+}
+
+fn print_ftl_entities(entries: &mut Vec<FTLEntry>) {
+  loop {
+    if entries.is_empty() {
+      break;
+    }
+    let entry1 = Some(entries.remove(0));
+    let id = match entry1 {
+      Some(FTLEntry::Entity{ id, .. }) => id.clone(),
       None => break
     };
 
@@ -41,10 +60,16 @@ fn print_entities(entries: &mut Vec<Entry>) {
 
 fn main() {
   if let Some(arg1) = env::args().nth(1) {
-    let source = read_file(arg1);
-    let mut parser = Parser::new(source.trim());
-    let mut entries = parser.parse();
-    print_entities(&mut entries);
+    let source = read_file(arg1.clone());
+    if arg1.ends_with(".ftl") {
+      let mut parser = FTLParser::new(source.trim());
+      let mut entries = parser.parse();
+      print_ftl_entities(&mut entries);
+    } else {
+      let mut parser = L20nParser::new(source.trim());
+      let mut entries = parser.parse();
+      print_l20n_entities(&mut entries);
+    }
   } else {
     println!("You must pass a path to an l20n file");
     return;

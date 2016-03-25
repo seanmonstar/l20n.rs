@@ -1,0 +1,9 @@
+[package]
+
+name = "parser_ftl"
+version = "0.0.1"
+authors = ["Zibi Braniecki <gandalf@mozilla.com>"]
+
+[lib]
+name = "parser_ftl"
+path = "main.rs"
