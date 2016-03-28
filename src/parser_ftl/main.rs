@@ -118,7 +118,7 @@ impl<'a> Parser<'a> {
 
     match ch {
       'a'...'z' | 'A'...'Z' | '_' => id.push(ch),
-        _ => panic!(),
+        _ => return Identifier{name: id, namespace: namespace},
     }
     self.bump();
 
