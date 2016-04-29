@@ -16,8 +16,7 @@ pub enum Entry {
 }
 
 pub struct Identifier {
-  pub name: String,
-  pub namespace: String
+  pub name: String
 }
 
 pub struct Parser<'a> {
@@ -82,7 +81,7 @@ impl<'a> Parser<'a> {
   }
 
   fn get_entity(&mut self) -> Entry {
-    let id = self.get_identifier(true);
+    let id = self.get_identifier();
     self.get_line_ws();
 
     if !self.ch_is('=') {
@@ -97,19 +96,8 @@ impl<'a> Parser<'a> {
     Entry::Entity{id: id, value: value}
   }
 
-  fn get_identifier(&mut self, ns_sep: bool) -> Identifier {
-    let mut id = String::new();
-    let mut namespace = String::new();
-
-    if ns_sep {
-      let ns = self.get_identifier(false);
-      if self.ch_is(':') {
-        namespace = ns.name;
-        self.bump();
-      } else if ns.name.len() > 0 {
-        id = ns.name;
-      }
-    }
+  fn get_identifier(&mut self) -> Identifier {
+    let mut name = String::new();
 
     let ch = match self.ch {
       Some(c) => c,
@@ -117,8 +105,8 @@ impl<'a> Parser<'a> {
     };
 
     match ch {
-      'a'...'z' | 'A'...'Z' | '_' => id.push(ch),
-        _ => return Identifier{name: id, namespace: namespace},
+      'a'...'z' | 'A'...'Z' | '_' => name.push(ch),
+        _ => return Identifier{name: name},
     }
     self.bump();
 
@@ -129,30 +117,81 @@ impl<'a> Parser<'a> {
       };
 
       match ch {
-        'a'...'z' | 'A'...'Z' | '0'...'9' | '_' | '-' => id.push(ch),
+        'a'...'z' | 'A'...'Z' | '0'...'9' | '_' | '-' => name.push(ch),
         _ => break,
       }
       self.bump();
     }
 
-    Identifier{name: id, namespace: namespace}
+    Identifier{name: name}
   }
 
   fn get_pattern(&mut self) -> Value {
-    let mut s = String::new();
-    let mut elements = vec![];
+    let mut buffer = String::new();
+    let mut source = String::new();
+    let mut content = vec![];
+    let mut quote_delimited: bool = false;
+    let mut first_line = true;
+
+    if self.ch_is('"') {
+      quote_delimited = true;
+    }
 
     loop {
       match self.ch {
-        Some(c) if c == '\n' => { self.bump(); break },
-        Some(c) => s.push(c),
+        Some(c) if c == '\n' => {
+          if quote_delimited {
+            panic!("Unclosed string");
+          }
+          self.bump();
+          self.get_line_ws();
+
+          if !self.ch_is('|') {
+            break;
+          }
+          if first_line && buffer.len() != 0 {
+            panic!("Multiline string should have the ID line empty");
+          }
+          first_line = false;
+          self.bump();
+          if self.ch_is(' ') {
+            self.bump();
+          }
+          if buffer.len() != 0 {
+            buffer.push('\n');
+          }
+          continue;
+        },
+        Some(c) if c == '"' => {
+          self.bump();
+          quote_delimited = false;
+          break;
+        },
+        Some(c) => source.push(c),
         None => { break }
       }
+      match self.ch {
+        Some(c) => buffer.push(c),
+        None => continue,
+      };
       self.bump();
     }
 
-    elements.push(PatternElement::TextElement {value: s.clone()});
+    if quote_delimited {
+      panic!("Unclosed string");
+    }
 
-    Value::Pattern{source: s, elements: elements}
+    if buffer.len() != 0 {
+      //source.append(buffer);
+      content.push(PatternElement::TextElement {value: source.clone()});
+    }
+
+    if content.len() == 0 {
+      //return Value::Pattern(source: source, elements: content);
+    }
+
+    content.push(PatternElement::TextElement {value: source.clone()});
+
+    Value::Pattern{source: source, elements: content}
   }
 }

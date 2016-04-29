@@ -46,15 +46,7 @@ fn print_l20n_entities(entries: &mut Vec<L20nEntry>) {
 }
 
 fn get_ftl_id(id: &FTLIdentifier) -> String {
-  if id.namespace.len() == 0 {
-    return id.name.to_string();
-  }
-  let ns = id.namespace.to_string();
-  let name = id.name.to_string();
-  let c = ":";
-
-  let full_id = ns + c + &name;
-  return full_id;
+  return id.name.to_string();
 }
 
 fn print_ftl_entities(entries: &mut Vec<FTLEntry>) {
