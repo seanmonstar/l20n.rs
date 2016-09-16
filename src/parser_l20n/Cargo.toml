@@ -1,9 +1,0 @@
-[package]
-
-name = "parser_l20n"
-version = "0.0.1"
-authors = ["Zibi Braniecki <gandalf@mozilla.com>"]
-
-[lib]
-name = "parser_l20n"
-path = "main.rs"

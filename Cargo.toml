@@ -2,12 +2,3 @@
 name = "l20n"
 version = "0.1.0"
 authors = ["Zibi Braniecki <gandalf@mozilla.com>"]
-
-[[bin]]
-name = "l20n"
-path = "./src/main.rs"
-
-
-[dependencies]
-parser_l20n = { path = "./src/parser_l20n" }
-parser_ftl = { path = "./src/parser_ftl" }
