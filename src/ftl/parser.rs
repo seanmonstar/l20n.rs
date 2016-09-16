@@ -199,6 +199,7 @@ impl<'a> Parser<'a> {
 
         if self.ch_is('"') {
             quote_delimited = true;
+            self.bump();
         }
 
         loop {
@@ -273,6 +274,8 @@ impl<'a> Parser<'a> {
             self.bump();
 
             let key = self.get_keyword();
+
+            self.bump();
 
             self.get_line_ws();
 
