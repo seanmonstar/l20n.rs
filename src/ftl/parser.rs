@@ -181,7 +181,7 @@ impl<'a> Parser<'a> {
             };
 
             match ch {
-                'a'...'z' | 'A'...'Z' | '0'...'9' | '_' | '-' | ' ' => name.push(ch),
+                'a'...'z' | 'A'...'Z' | '0'...'9' | '_' | '-' | ' ' | '/' => name.push(ch),
                 _ => break,
             }
             self.bump();
@@ -235,10 +235,6 @@ impl<'a> Parser<'a> {
                 Some(c) => source.push(c),
                 None => break,
             }
-            match self.ch {
-                Some(c) => buffer.push(c),
-                None => continue,
-            };
             self.bump();
         }
 
@@ -247,7 +243,7 @@ impl<'a> Parser<'a> {
         }
 
         if buffer.len() != 0 {
-            // source.append(buffer);
+            source.push_str(&buffer);
             content.push(PatternElement::TextElement { value: source.clone() });
         }
 

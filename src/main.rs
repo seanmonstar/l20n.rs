@@ -3,6 +3,7 @@ use self::ftl::ast::Entry as FTLEntry;
 use self::ftl::ast::Value as FTLValue;
 use self::ftl::ast::Identifier as FTLIdentifier;
 use self::ftl::ast::Keyword as FTLKeyword;
+use self::ftl::ast::Member as FTLMember;
 
 use std::fs::File;
 use std::io::BufReader;
@@ -39,10 +40,15 @@ fn print_ftl_entities(entries: &mut Vec<FTLEntry>) {
             break;
         }
         match entries.remove(0) {
-            FTLEntry::Entity { id, value, .. } => {
+            FTLEntry::Entity { id, value, traits } => {
                 let FTLValue::Pattern { source, .. } = value;
+                let traits: Option<Vec<FTLMember>> = traits;
 
                 println!("ID: {}, VALUE: {}", get_ftl_id(&id), source);
+                match traits {
+                    Some(t) => print_ftl_traits(t),
+                    None => {}
+                }
             }
             FTLEntry::Comment { content } => {
                 println!("Comment: {}", content);
@@ -51,6 +57,14 @@ fn print_ftl_entities(entries: &mut Vec<FTLEntry>) {
                 println!("Section: {}", get_ftl_key(&key));
             }
         }
+    }
+}
+
+fn print_ftl_traits(traits: Vec<FTLMember>) {
+    for t in &traits {
+        let FTLValue::Pattern { ref source, .. } = t.value;
+        println!("  Trait: {}, Value: {}", get_ftl_key(&t.key), source);
+
     }
 }
 
