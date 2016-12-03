@@ -31,7 +31,7 @@ fn resource_to_json(entries: &Vec<FTLEntry>) -> Json {
   let mut d = BTreeMap::new();
 
   for i in 0..entries.len() {
-    if let FTLEntry::Entity{ ref id, ref value, ref traits } = entries[i] {
+    if let FTLEntry::Entity{ ref id, ref value, .. } = entries[i] {
       let FTLValue::Pattern { ref source, .. } = *value;
       d.insert(id.name.to_string(), source.to_json());
     }
@@ -48,7 +48,7 @@ fn it_works() {
 
   let mut parser = FTLParser::new(string.trim());
 
-  let mut entries = parser.parse();
+  let entries = parser.parse();
 
   let json = resource_to_json(&entries);
 
