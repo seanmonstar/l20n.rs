@@ -6,25 +6,17 @@ use self::ftl::ast::Keyword as FTLKeyword;
 use self::ftl::ast::Member as FTLMember;
 
 use std::fs::File;
-use std::io::BufReader;
 use std::io::Read;
-
 use std::env;
+use std::io;
 
-fn read_file(path: String) -> String {
-    let file = match File::open(path) {
-        Ok(file) => file,
-        Err(..) => panic!("room"),
-    };
-
-    let mut reader = BufReader::new(&file);
-    let buffer_string = &mut String::new();
-    reader.read_to_string(buffer_string)
-        .ok()
-        .expect("Failed to read string");
-
-    buffer_string.clone()
+fn read_file(path: String) -> Result<String, io::Error> {
+  let mut f = try!(File::open(path));
+  let mut s = String::new();
+  try!(f.read_to_string(&mut s));
+  Ok(s)
 }
+
 
 fn get_ftl_id(id: &FTLIdentifier) -> String {
     return id.name.to_string();
@@ -70,7 +62,7 @@ fn print_ftl_traits(traits: Vec<FTLMember>) {
 
 fn main() {
     if let Some(arg1) = env::args().nth(1) {
-        let source = read_file(arg1.clone());
+        let source = read_file(arg1.clone()).expect("Read file failed");
         let mut parser = FTLParser::new(source.trim());
         let mut entries = parser.parse();
         print_ftl_entities(&mut entries);

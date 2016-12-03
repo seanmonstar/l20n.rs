@@ -1,3 +1,7 @@
+extern crate rustc_serialize;
+
+use self::rustc_serialize::json::{Json, ToJson};
+
 pub enum Entry {
     Comment { content: String },
     Entity {
@@ -11,6 +15,13 @@ pub enum Entry {
 pub struct Identifier {
     pub name: String,
 }
+
+impl ToJson for Identifier {
+  fn to_json(&self) -> Json {
+    self.name.to_json()
+  }
+}
+
 
 pub struct Keyword {
     pub name: String,
