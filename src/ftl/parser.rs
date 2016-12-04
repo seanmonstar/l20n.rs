@@ -227,6 +227,16 @@ impl<'a> Parser<'a> {
                     }
                     continue;
                 }
+                Some(c) if c == '\\' => {
+                    self.bump();
+                    if let Some(ch2) = self.ch {
+                      if (quote_delimited && ch2 == '"') || ch2 =='{' {
+                          source.push(ch2);
+                          self.bump();
+                          continue;
+                      }
+                    }
+                }
                 Some(c) if c == '"' => {
                     self.bump();
                     quote_delimited = false;

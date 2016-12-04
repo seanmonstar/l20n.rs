@@ -4,6 +4,7 @@ extern crate rustc_serialize;
 use std::io::prelude::*;
 use std::fs::File;
 use std::io;
+use std::fs;
 use rustc_serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
 
@@ -42,15 +43,26 @@ fn resource_to_json(entries: &Vec<FTLEntry>) -> Json {
 
 #[test]
 fn it_works() {
-  let string = read_file("./tests/fixtures/parser/ftl/01-basic01.ftl").expect("Failed to read");
+  let paths = fs::read_dir("./tests/fixtures/parser/ftl/").unwrap();
 
-  let reference_json = read_json_file("./tests/fixtures/parser/ftl/01-basic01.entries.json").expect("Failed to read");
+  for p in paths {
+      let path = p.unwrap().path();
+      if path.extension().unwrap().to_str().unwrap() != "ftl" ||
+         path.to_str().unwrap().contains("errors") {
+        continue;
+      }
 
-  let mut parser = FTLParser::new(string.trim());
+      let path_len = path.to_str().unwrap().len();
+      let entries_path = format!("{}.entries.json", &path.to_str().unwrap()[0..(path_len-4)]);
+      let string = read_file(path.to_str().unwrap()).expect("Failed to read");
+      let reference_json = read_json_file(&entries_path).expect("Failed to read");
 
-  let entries = parser.parse();
+      let mut parser = FTLParser::new(string.trim());
 
-  let json = resource_to_json(&entries);
+      println!("Attempting to parse file: {}", path.to_str().unwrap());
+      let entries = parser.parse();
+      let json = resource_to_json(&entries);
 
-  assert_eq!(json, reference_json);
+      assert_eq!(json, reference_json);
+  }
 }
