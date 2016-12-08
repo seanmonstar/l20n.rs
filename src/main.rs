@@ -26,34 +26,31 @@ fn get_ftl_key(key: &FTLKeyword) -> String {
     return key.name.to_string();
 }
 
-fn print_ftl_entities(entries: &mut Vec<FTLEntry>) {
-    loop {
-        if entries.is_empty() {
-            break;
-        }
-        match entries.remove(0) {
-            FTLEntry::Entity { id, value, traits } => {
-                let FTLValue::Pattern { source, .. } = value;
-                let traits: Option<Vec<FTLMember>> = traits;
+fn print_ftl_entities(entries: &Vec<FTLEntry>) {
+    for i in 0..entries.len() {
+        match entries[i] {
+            FTLEntry::Entity { ref id, ref value, ref traits } => {
+                let &FTLValue::Pattern { ref source, .. } = value;
+                let traits: &Option<Vec<FTLMember>> = traits;
 
                 println!("ID: {}, VALUE: {}", get_ftl_id(&id), source);
-                match traits {
-                    Some(t) => print_ftl_traits(t),
+                match *traits {
+                    Some(ref t) => print_ftl_traits(&t),
                     None => {}
                 }
             }
-            FTLEntry::Comment { content } => {
+            FTLEntry::Comment { ref content } => {
                 println!("Comment: {}", content);
             }
-            FTLEntry::Section { key, .. } => {
+            FTLEntry::Section { ref key, .. } => {
                 println!("Section: {}", get_ftl_key(&key));
             }
         }
     }
 }
 
-fn print_ftl_traits(traits: Vec<FTLMember>) {
-    for t in &traits {
+fn print_ftl_traits(traits: &Vec<FTLMember>) {
+    for t in traits {
         let FTLValue::Pattern { ref source, .. } = t.value;
         println!("  Trait: {}, Value: {}", get_ftl_key(&t.key), source);
 
@@ -65,7 +62,7 @@ fn main() {
         let source = read_file(arg1.clone()).expect("Read file failed");
         let mut parser = FTLParser::new(source.trim());
         let mut entries = parser.parse();
-        print_ftl_entities(&mut entries);
+        print_ftl_entities(&entries);
     } else {
         println!("You must pass a path to an l20n file");
         return;
