@@ -8,6 +8,7 @@ pub enum Entry {
     Section { key: Keyword, body: Vec<Entry> },
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Identifier {
     pub name: String,
 }

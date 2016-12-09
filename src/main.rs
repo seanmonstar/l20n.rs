@@ -1,3 +1,11 @@
+#![feature(proc_macro)]
+
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate serde_json;
+
 use self::ftl::parser::Parser as FTLParser;
 use self::ftl::ast::Entry as FTLEntry;
 use self::ftl::ast::Value as FTLValue;
@@ -33,6 +41,7 @@ fn print_ftl_entities(entries: &Vec<FTLEntry>) {
                 let &FTLValue::Pattern { ref source, .. } = value;
                 let traits: &Option<Vec<FTLMember>> = traits;
 
+                let s = serde_json::to_string(&id).unwrap();
                 println!("ID: {}, VALUE: {}", get_ftl_id(&id), source);
                 match *traits {
                     Some(ref t) => print_ftl_traits(&t),
