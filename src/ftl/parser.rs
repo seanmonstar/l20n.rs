@@ -94,10 +94,10 @@ impl<'a> Parser<'a> {
         self.bump();
 
         let mut body = vec![];
-        Entry::Section {
+        Entry::Section(Section {
             key: key,
             body: body,
-        }
+        })
     }
 
     fn get_entity(&mut self) -> Entry {
@@ -123,11 +123,11 @@ impl<'a> Parser<'a> {
             members = Some(self.get_members());
         }
 
-        Entry::Entity {
+        Entry::Entity(Entity {
             id: id,
             value: value,
             traits: members,
-        }
+        })
     }
 
     fn get_identifier(&mut self) -> Identifier {
@@ -140,7 +140,7 @@ impl<'a> Parser<'a> {
 
         match ch {
             'a'...'z' | 'A'...'Z' | '_' => name.push(ch),
-            _ => return Identifier { name: name },
+            _ => return Identifier(name),
         }
         self.bump();
 
@@ -157,7 +157,7 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
-        Identifier { name: name }
+        Identifier(name)
     }
 
     fn get_keyword(&mut self) -> Keyword {
@@ -170,7 +170,7 @@ impl<'a> Parser<'a> {
 
         match ch {
             'a'...'z' | 'A'...'Z' | '_' => name.push(ch),
-            _ => return Keyword { name: name },
+            _ => return Keyword(name),
         }
         self.bump();
 
@@ -187,10 +187,10 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
-        Keyword { name: name }
+        Keyword(name)
     }
 
-    fn get_pattern(&mut self) -> Value {
+    fn get_pattern(&mut self) -> Pattern {
         let mut buffer = String::new();
         let mut source = String::new();
         let mut content = vec![];
@@ -254,16 +254,16 @@ impl<'a> Parser<'a> {
 
         if buffer.len() != 0 {
             source.push_str(&buffer);
-            content.push(PatternElement::TextElement { value: source.clone() });
+            content.push(PatternElement::TextElement(TextElement(source.clone())));
         }
 
         if content.len() == 0 {
             // return Value::Pattern(source: source, elements: content);
         }
 
-        content.push(PatternElement::TextElement { value: source.clone() });
+        content.push(PatternElement::TextElement(TextElement(source.clone())));
 
-        Value::Pattern {
+        Pattern {
             source: source,
             elements: content,
         }
@@ -331,7 +331,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Entry::Comment { content: content }
+        Entry::Comment(Comment ( content ))
 
     }
 }

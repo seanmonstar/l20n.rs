@@ -5,6 +5,6 @@ authors = ["Zibi Braniecki <gandalf@mozilla.com>"]
 
 [dependencies]
 rustc-serialize = "0.3"
-serde = { git = "https://github.com/serde-rs/serde" }
-serde_json = { git = "https://github.com/serde-rs/json" }
+serde = "0.8.19"
+serde_json = "0.8.4"
 serde_derive = "0.8.19"

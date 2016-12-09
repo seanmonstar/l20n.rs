@@ -7,11 +7,7 @@ extern crate serde;
 extern crate serde_json;
 
 use self::ftl::parser::Parser as FTLParser;
-use self::ftl::ast::Entry as FTLEntry;
-use self::ftl::ast::Value as FTLValue;
-use self::ftl::ast::Identifier as FTLIdentifier;
-use self::ftl::ast::Keyword as FTLKeyword;
-use self::ftl::ast::Member as FTLMember;
+use self::ftl::ast::*;
 
 use std::fs::File;
 use std::io::Read;
@@ -25,44 +21,19 @@ fn read_file(path: String) -> Result<String, io::Error> {
   Ok(s)
 }
 
-
-fn get_ftl_id(id: &FTLIdentifier) -> String {
-    return id.name.to_string();
-}
-
-fn get_ftl_key(key: &FTLKeyword) -> String {
-    return key.name.to_string();
-}
-
-fn print_ftl_entities(entries: &Vec<FTLEntry>) {
-    for i in 0..entries.len() {
-        match entries[i] {
-            FTLEntry::Entity { ref id, ref value, ref traits } => {
-                let &FTLValue::Pattern { ref source, .. } = value;
-                let traits: &Option<Vec<FTLMember>> = traits;
-
-                let s = serde_json::to_string(&id).unwrap();
-                println!("ID: {}, VALUE: {}", get_ftl_id(&id), source);
-                match *traits {
-                    Some(ref t) => print_ftl_traits(&t),
-                    None => {}
-                }
+fn print_ftl_json(entries: &Vec<Entry>) {
+    for entry in entries {
+        match entry {
+            &Entry::Entity(ref entity) => {
+              let e = serde_json::to_string(&entity).unwrap();
+              println!("Entity: {}", e);
             }
-            FTLEntry::Comment { ref content } => {
-                println!("Comment: {}", content);
+            &Entry::Comment(ref comment) => {
+              println!("Comment: {}", serde_json::to_string(&comment).unwrap());
             }
-            FTLEntry::Section { ref key, .. } => {
-                println!("Section: {}", get_ftl_key(&key));
+            &Entry::Section(Section { .. }) => {
             }
         }
-    }
-}
-
-fn print_ftl_traits(traits: &Vec<FTLMember>) {
-    for t in traits {
-        let FTLValue::Pattern { ref source, .. } = t.value;
-        println!("  Trait: {}, Value: {}", get_ftl_key(&t.key), source);
-
     }
 }
 
@@ -70,8 +41,9 @@ fn main() {
     if let Some(arg1) = env::args().nth(1) {
         let source = read_file(arg1.clone()).expect("Read file failed");
         let mut parser = FTLParser::new(source.trim());
-        let mut entries = parser.parse();
-        print_ftl_entities(&entries);
+        let entries = parser.parse();
+        //print_ftl_entities(&entries);
+        print_ftl_json(&entries);
     } else {
         println!("You must pass a path to an l20n file");
         return;
