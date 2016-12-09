@@ -1,3 +1,7 @@
+extern crate serde;
+
+use self::serde::ser::Serializer;
+use self::serde::ser::Serialize;
 
 #[derive(Serialize, Deserialize)]
 pub struct Resource(pub Vec<Entry>);
@@ -5,7 +9,7 @@ pub struct Resource(pub Vec<Entry>);
 #[derive(Serialize, Deserialize)]
 pub struct Entity {
     pub id: Identifier,
-    pub value: Pattern,
+    pub value: Option<Pattern>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub traits: Option<Vec<Member>>,
 }
@@ -35,7 +39,7 @@ pub struct Keyword(pub String);
 #[derive(Serialize, Deserialize)]
 pub struct Member {
     pub key: Keyword,
-    pub value: Pattern,
+    pub value: Option<Pattern>,
     pub default: bool,
 }
 
@@ -61,10 +65,18 @@ pub enum PatternElement {
     Placeable(Placeable),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct Pattern {
     pub source: String,
 
     #[serde(skip_serializing)]
     pub elements: Vec<PatternElement>,
+}
+
+impl Serialize for Pattern {
+  fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+    where S: Serializer
+  {
+    serializer.serialize_str(&self.source)
+  }
 }

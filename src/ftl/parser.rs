@@ -190,8 +190,7 @@ impl<'a> Parser<'a> {
         Keyword(name)
     }
 
-    fn get_pattern(&mut self) -> Pattern {
-        let mut buffer = String::new();
+    fn get_pattern(&mut self) -> Option<Pattern> {
         let mut source = String::new();
         let mut content = vec![];
         let mut quote_delimited: bool = false;
@@ -214,16 +213,13 @@ impl<'a> Parser<'a> {
                     if !self.ch_is('|') {
                         break;
                     }
-                    if first_line && buffer.len() != 0 {
+                    if first_line && source.len() != 0 {
                         panic!("Multiline string should have the ID line empty");
                     }
                     first_line = false;
                     self.bump();
                     if self.ch_is(' ') {
                         self.bump();
-                    }
-                    if buffer.len() != 0 {
-                        buffer.push('\n');
                     }
                     continue;
                 }
@@ -252,21 +248,16 @@ impl<'a> Parser<'a> {
             panic!("Unclosed string");
         }
 
-        if buffer.len() != 0 {
-            source.push_str(&buffer);
-            content.push(PatternElement::TextElement(TextElement(source.clone())));
-        }
-
-        if content.len() == 0 {
-            // return Value::Pattern(source: source, elements: content);
+        if source.len() == 0 {
+            return None;
         }
 
         content.push(PatternElement::TextElement(TextElement(source.clone())));
 
-        Pattern {
+        Some(Pattern {
             source: source,
             elements: content,
-        }
+        })
     }
 
     fn get_members(&mut self) -> Vec<Member> {
@@ -285,14 +276,11 @@ impl<'a> Parser<'a> {
 
             self.get_line_ws();
 
-            let value = self.get_pattern();
-
             let member = Member {
-                key: key,
-                value: value,
-                default: false,
+              key: key,
+              value: self.get_pattern(),
+              default: false,
             };
-
             members.push(member);
 
             self.get_ws()
