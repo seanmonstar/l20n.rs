@@ -3,23 +3,23 @@ extern crate serde;
 use self::serde::ser::Serializer;
 use self::serde::ser::Serialize;
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Resource(pub Vec<Entry>);
 
-impl Serialize for Resource {
-  fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
-    where S: Serializer
-  {
-    let mut map = serializer.serialize_map(Some(2)).unwrap();
-    serializer.serialize_map_key(&mut map, "type");
-    serializer.serialize_map_value(&mut map, "Resource");
-    serializer.serialize_map_key(&mut map, "body");
-    serializer.serialize_map_value(&mut map, &self.0);
-    serializer.serialize_map_end(map)
-  }
-}
+// impl Serialize for Resource {
+//   fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+//     where S: Serializer
+//   {
+//     let mut map = serializer.serialize_map(Some(2)).unwrap();
+//     serializer.serialize_map_key(&mut map, "type");
+//     serializer.serialize_map_value(&mut map, "Resource");
+//     serializer.serialize_map_key(&mut map, "body");
+//     serializer.serialize_map_value(&mut map, &self.0);
+//     serializer.serialize_map_end(map)
+//   }
+// }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Entity {
     pub id: Identifier,
     pub value: Option<Pattern>,
@@ -27,24 +27,24 @@ pub struct Entity {
     pub comment: Option<String>
 }
 
-impl Serialize for Entity {
-  fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
-    where S: Serializer
-  {
-    let mut map = serializer.serialize_map(Some(5)).unwrap();
-    serializer.serialize_map_key(&mut map, "type");
-    serializer.serialize_map_value(&mut map, "Entity");
-    serializer.serialize_map_key(&mut map, "id");
-    serializer.serialize_map_value(&mut map, &self.id);
-    serializer.serialize_map_key(&mut map, "value");
-    serializer.serialize_map_value(&mut map, &self.value);
-    serializer.serialize_map_key(&mut map, "traits");
-    serializer.serialize_map_value(&mut map, &self.traits);
-    serializer.serialize_map_key(&mut map, "comment");
-    serializer.serialize_map_value(&mut map, &self.comment);
-    serializer.serialize_map_end(map)
-  }
-}
+// impl Serialize for Entity {
+//   fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+//     where S: Serializer
+//   {
+//     let mut map = serializer.serialize_map(Some(5)).unwrap();
+//     serializer.serialize_map_key(&mut map, "type");
+//     serializer.serialize_map_value(&mut map, "Entity");
+//     serializer.serialize_map_key(&mut map, "id");
+//     serializer.serialize_map_value(&mut map, &self.id);
+//     serializer.serialize_map_key(&mut map, "value");
+//     serializer.serialize_map_value(&mut map, &self.value);
+//     serializer.serialize_map_key(&mut map, "traits");
+//     serializer.serialize_map_value(&mut map, &self.traits);
+//     serializer.serialize_map_key(&mut map, "comment");
+//     serializer.serialize_map_value(&mut map, &self.comment);
+//     serializer.serialize_map_end(map)
+//   }
+// }
 
 #[derive(Serialize, Deserialize)]
 pub struct Comment(pub String);

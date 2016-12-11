@@ -54,13 +54,44 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            self.get_entity(&mut entries);
+            self.get_entry(&mut entries);
             self.get_ws();
         }
         Resource(entries)
     }
 
-    pub fn get_entity(&mut self, entries: &mut Map<String, String>) {
+    fn get_entry(&mut self, entries: &mut Map<String, Value>) {
+        if self.ch_is('#') {
+            self.get_comment();
+            return;
+        }
+
+        if self.ch_is('[') {
+            self.get_section();
+            return;
+        }
+
+        if self.ch != None && !self.ch_is('\n') {
+            self.get_entity(entries);
+        }
+    }
+
+    fn get_section(&mut self) {
+        self.bump();
+        self.bump();
+
+        self.get_line_ws();
+
+        self.get_keyword();
+
+        self.get_line_ws();
+
+        self.bump();
+        self.bump();
+    }
+
+
+    fn get_entity(&mut self, entries: &mut Map<String, Value>) {
         let id = self.get_identifier();
         self.get_line_ws();
 
@@ -72,10 +103,91 @@ impl<'a> Parser<'a> {
         self.get_line_ws();
 
         let value = self.get_pattern();
-        entries.insert(id, value);
+
+        if self.ch_is('\n') {
+            self.bump();
+            self.get_line_ws();
+        }
+
+        let mut members: Option<Vec<Member>> = None;
+        if self.ch_is('[') ||
+           self.ch_is('*') {
+            members = Some(self.get_members());
+        }
+
+        entries.insert(id, Value::Pattern(value));
     }
 
-    pub fn get_identifier(&mut self) -> String {
+    fn get_members(&mut self) -> Vec<Member> {
+        let mut members = vec![];
+
+        loop {
+            if !self.ch_is('[') &&
+               !self.ch_is('*') {
+                break;
+            }
+
+            let mut def = false;
+
+            if self.ch_is('*') {
+              self.bump();
+              def = true;
+            }
+
+            self.bump();
+
+            let key = self.get_keyword();
+
+            self.bump();
+
+            self.get_line_ws();
+
+            let mut t = String::new();
+            t.push_str("kw");
+            let keyword = Keyword {
+              t: t,
+              name: key
+            };
+
+            let member = Member {
+              key: keyword,
+              val: self.get_pattern(),
+            };
+            members.push(member);
+
+            self.get_ws()
+
+        }
+
+        members
+    }
+
+    fn get_comment(&mut self) {
+        self.bump();
+        if self.ch_is(' ') {
+            self.bump();
+        }
+
+        loop {
+            while !self.ch_is('\n') {
+                if self.ch == None {
+                    break;
+                }
+
+                self.bump();
+            }
+
+            self.bump();
+
+            if self.ch_is('#') {
+                self.bump();
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn get_identifier(&mut self) -> String {
         let mut name = String::new();
 
         let ch = match self.ch {
@@ -105,7 +217,37 @@ impl<'a> Parser<'a> {
         name
     }
 
-    fn get_pattern(&mut self) -> String {
+    fn get_keyword(&mut self) -> String {
+        let mut name = String::new();
+
+        let ch = match self.ch {
+            Some(c) => c,
+            None => panic!(),
+        };
+
+        match ch {
+            'a'...'z' | 'A'...'Z' | '_' => name.push(ch),
+            _ => return name,
+        }
+        self.bump();
+
+        loop {
+            let ch = match self.ch {
+                Some(c) => c,
+                None => break,
+            };
+
+            match ch {
+                'a'...'z' | 'A'...'Z' | '0'...'9' | '_' | '-' | ' ' | '/' => name.push(ch),
+                _ => break,
+            }
+            self.bump();
+        }
+
+        name
+    }
+
+    fn get_pattern(&mut self) -> Pattern {
         let mut source = String::new();
         let mut quote_delimited: bool = false;
         let mut first_line = true;
@@ -129,6 +271,10 @@ impl<'a> Parser<'a> {
                     }
                     if first_line && source.len() != 0 {
                         panic!("Multiline string should have the ID line empty");
+                    }
+                    
+                    if !first_line {
+                        source.push('\n');
                     }
                     first_line = false;
                     self.bump();
@@ -163,10 +309,10 @@ impl<'a> Parser<'a> {
         }
 
         if source.len() == 0 {
-            return source;
+            return Pattern {source: source};
         }
 
-        source
+        Pattern {source: source }
     }
 
 }

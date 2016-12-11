@@ -37,6 +37,8 @@ fn entries_parser() {
         continue;
       }
 
+      println!("Comparing file: {}", path.to_str().unwrap());
+
       let path_len = path.to_str().unwrap().len();
       let entries_path = format!("{}.entries.json", &path.to_str().unwrap()[0..(path_len-4)]);
       let string = read_file(path.to_str().unwrap()).expect("Failed to read");
@@ -46,7 +48,6 @@ fn entries_parser() {
 
       let res = parser.parse();
 
-      println!("Comparing file: {}", path.to_str().unwrap());
 
       assert_eq!(reference_res, res, "Foo");
   }
