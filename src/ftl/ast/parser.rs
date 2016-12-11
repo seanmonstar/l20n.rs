@@ -5,7 +5,7 @@ use super::ast::*;
 pub struct Parser<'a> {
     source: str::Chars<'a>,
     ch: Option<char>,
-    pos: u16,
+    pos: u32,
 }
 
 impl<'a> Parser<'a> {
@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Vec<Entry> {
+    pub fn parse(&mut self) -> Resource {
         let mut entries: Vec<Entry> = Vec::new();
 
         self.get_ws();
@@ -57,7 +57,7 @@ impl<'a> Parser<'a> {
             }
             self.get_ws();
         }
-        entries
+        Resource(entries)
     }
 
     fn get_entry(&mut self) -> Option<Entry> {
@@ -119,7 +119,8 @@ impl<'a> Parser<'a> {
         }
 
         let mut members: Option<Vec<Member>> = None;
-        if self.ch_is('[') {
+        if self.ch_is('[') ||
+           self.ch_is('*') {
             members = Some(self.get_members());
         }
 
@@ -127,6 +128,7 @@ impl<'a> Parser<'a> {
             id: id,
             value: value,
             traits: members,
+            comment: None
         })
     }
 
@@ -264,8 +266,16 @@ impl<'a> Parser<'a> {
         let mut members = vec![];
 
         loop {
-            if !self.ch_is('[') {
+            if !self.ch_is('[') &&
+               !self.ch_is('*') {
                 break;
+            }
+
+            let mut def = false;
+
+            if self.ch_is('*') {
+              self.bump();
+              def = true;
             }
 
             self.bump();
@@ -279,7 +289,7 @@ impl<'a> Parser<'a> {
             let member = Member {
               key: key,
               value: self.get_pattern(),
-              default: false,
+              default: def,
             };
             members.push(member);
 

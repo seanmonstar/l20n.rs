@@ -6,8 +6,10 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-use self::ftl::parser::Parser as FTLParser;
-use self::ftl::ast::*;
+use self::ftl::ast::parser::Parser as FTLParser;
+use self::ftl::entries::parser::Parser as EntriesParser;
+use self::ftl::ast::ast::Resource as ASTResource;
+use self::ftl::entries::ast::Resource as EntriesResource;
 
 use std::fs::File;
 use std::io::Read;
@@ -21,29 +23,25 @@ fn read_file(path: String) -> Result<String, io::Error> {
   Ok(s)
 }
 
-fn print_ftl_json(entries: &Vec<Entry>) {
-    for entry in entries {
-        match entry {
-            &Entry::Entity(ref entity) => {
-              let e = serde_json::to_string(&entity).unwrap();
-              println!("Entity: {}", e);
-            }
-            &Entry::Comment(ref comment) => {
-              println!("Comment: {}", serde_json::to_string(&comment).unwrap());
-            }
-            &Entry::Section(Section { .. }) => {
-            }
-        }
-    }
+fn print_ast_resource(res: &ASTResource) {
+    let e = serde_json::to_string_pretty(res).unwrap();
+    println!("{}", e);
+}
+
+fn print_entries_resource(res: &EntriesResource) {
+    let e = serde_json::to_string_pretty(res).unwrap();
+    println!("{}", e);
 }
 
 fn main() {
     if let Some(arg1) = env::args().nth(1) {
         let source = read_file(arg1.clone()).expect("Read file failed");
-        let mut parser = FTLParser::new(source.trim());
-        let entries = parser.parse();
-        //print_ftl_entities(&entries);
-        print_ftl_json(&entries);
+        // let mut parser = FTLParser::new(source.trim());
+        // let res = parser.parse();
+        // print_ftl_resource(&res);
+        let mut parser = EntriesParser::new(source.trim());
+        let res = parser.parse();
+        print_entries_resource(&res);
     } else {
         println!("You must pass a path to an l20n file");
         return;
