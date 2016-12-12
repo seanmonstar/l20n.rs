@@ -109,13 +109,14 @@ impl<'a> Parser<'a> {
             self.get_line_ws();
         }
 
-        let mut members: Option<Vec<Member>> = None;
         if self.ch_is('[') ||
            self.ch_is('*') {
-            members = Some(self.get_members());
+            let members = self.get_members();
+            entries.insert(id, Value::ComplexValue{ val: value, traits: members });
+        } else {
+            entries.insert(id, Value::Pattern(value));
         }
 
-        entries.insert(id, Value::Pattern(value));
     }
 
     fn get_members(&mut self) -> Vec<Member> {
@@ -142,8 +143,7 @@ impl<'a> Parser<'a> {
 
             self.get_line_ws();
 
-            let mut t = String::new();
-            t.push_str("kw");
+            let t = String::from("kw");
             let keyword = Keyword {
               t: t,
               name: key
