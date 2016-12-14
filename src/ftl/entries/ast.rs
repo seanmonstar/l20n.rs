@@ -1,6 +1,5 @@
 extern crate serde;
 extern crate serde_json;
-extern crate void;
 
 use self::serde::ser::Serializer;
 use self::serde::ser::Serialize;
@@ -8,8 +7,6 @@ use self::serde::de::Visitor;
 use self::serde::de::MapVisitor;
 use self::serde::de::Error;
 use self::serde::de::{Deserialize, Deserializer};
-use self::void::Void;
-use std::str::FromStr;
 
 
 use self::serde_json::Map;
@@ -35,7 +32,8 @@ pub enum Value {
     Pattern(Pattern),
     ComplexValue {
       traits: Option<Vec<Member>>,
-      val: Option<Pattern>
+      val: Option<Pattern>,
+      def: Option<i8>
     }
 }
 
@@ -112,7 +110,7 @@ pub struct Entity {
     pub value: Value,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq)]
 pub struct Pattern {
     pub source: String,
 }
@@ -125,12 +123,14 @@ impl Serialize for Pattern {
     }
 }
 
-impl FromStr for Pattern {
-  type Err = Void;
-
-  fn from_str(s: &str) -> Result<Self, Self::Err> {
-    Ok(Pattern {
-      source: s.to_string()
-    })
-  }
+impl Deserialize for Pattern {
+    fn deserialize<D>(deserializer: &mut D) -> Result<Pattern, D::Error>
+      where D: Deserializer
+    {
+        let result: serde_json::Value = try!(serde::Deserialize::deserialize(deserializer));
+        match result {
+          serde_json::Value::String(s) => Ok(Pattern { source: s }),
+          _ => Err(serde::de::Error::custom("Unexpected value")),
+        }
+    }
 }

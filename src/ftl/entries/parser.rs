@@ -121,7 +121,7 @@ impl<'a> Parser<'a> {
         let mut members = vec![];
 
         loop {
-            if !self.ch_is('[') &&
+            if (!self.ch_is('[') || self.source.peek() == Some(&'[')) &&
                !self.ch_is('*') {
                 break;
             }
