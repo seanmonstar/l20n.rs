@@ -3,6 +3,11 @@ extern crate serde_json;
 
 use self::serde::ser::Serializer;
 use self::serde::ser::Serialize;
+use self::serde::de::Deserialize;
+use self::serde::de::Deserializer;
+use self::serde::de::Visitor;
+use self::serde::de::MapVisitor;
+use self::serde::de::Error;
 
 
 use self::serde_json::Map;
@@ -23,12 +28,12 @@ pub struct Member {
   pub val: Pattern
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq)]
 pub enum Value {
     Pattern(Pattern),
     ComplexValue {
-      traits: Vec<Member>,
-      val: Pattern
+      traits: Option<Vec<Member>>,
+      val: Option<Pattern>
     }
 }
 
@@ -39,11 +44,11 @@ impl Serialize for Value {
     match self {
       &Value::Pattern( Pattern { ref source } ) => serializer.serialize_str(&source),
       &Value::ComplexValue { ref val, ref traits } => {
-        let num_fields = if val.source.is_empty() { 1 } else { 2 };
+        let num_fields = if !val.is_none() { 1 } else { 2 };
         let mut map = serializer.serialize_map(Some(num_fields)).unwrap();
-        if num_fields == 2 {
+        if let &Some(ref v) = val {
             serializer.serialize_map_key(&mut map, "val");
-            serializer.serialize_map_value(&mut map, &val.source);
+            serializer.serialize_map_value(&mut map, &v.source);
         }
         serializer.serialize_map_key(&mut map, "traits");
         serializer.serialize_map_value(&mut map, traits);
@@ -53,22 +58,79 @@ impl Serialize for Value {
   }
 }
 
+
+impl Deserialize for Value {
+    fn deserialize<D>(deserializer: &mut D) -> Result<Value, D::Error>
+      where D: Deserializer
+    {
+      struct FieldVisitor;
+
+      impl Visitor for FieldVisitor {
+        type Value = Value;
+
+        fn visit_str<E>(&mut self, value: &str) -> Result<Value, E>
+          where E: Error
+        {
+          Ok(Value::Pattern(Pattern { source: String::from(value) }))
+        }
+
+        fn visit_map<V>(&mut self, mut visitor: V) -> Result<Value, V::Error>
+          where V: MapVisitor
+        {
+          let mut val: Option<Pattern> = None;
+          let mut traits: Option<Vec<Member>> = None;
+          while let Some(key) = try!(visitor.visit_key()) {
+            let key: String = key;
+            match &key as &str {
+              "val" => {
+                let value: String = try!(visitor.visit_value());
+                val = Some(Pattern { source: value });
+              },
+              "traits" => {
+                let value: Vec<Member> = try!(visitor.visit_value());
+                traits = Some(value);
+              },
+              _ => {}
+            }
+          }
+          try!(visitor.end());
+          Ok(Value::ComplexValue{
+            val: val,
+            traits: traits
+          })
+        }
+      }
+      deserializer.deserialize_struct_field(FieldVisitor)
+    }
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Entity {
     pub id: String,
-    pub value: Option<Pattern>,
+    pub value: Value,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq)]
 pub struct Pattern {
     pub source: String,
 }
 
 impl Serialize for Pattern {
-  fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
-    where S: Serializer
-  {
-    serializer.serialize_str(&self.source)
-  }
+    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+      where S: Serializer
+    {
+        serializer.serialize_str(&self.source)
+    }
 }
 
+impl Deserialize for Pattern {
+    fn deserialize<D>(deserializer: &mut D) -> Result<Pattern, D::Error>
+      where D: Deserializer
+    {
+        let result: serde_json::Value = try!(serde::Deserialize::deserialize(deserializer));
+        match result {
+          serde_json::Value::String(s) => Ok(Pattern { source: s }),
+          _ => Err(serde::de::Error::custom("Unexpected value")),
+        }
+    }
+}

@@ -33,14 +33,19 @@ fn print_entries_resource(res: &EntriesResource) {
     println!("{}", e);
 }
 
+fn deserialize_json(source: &str) -> EntriesResource {
+    return serde_json::from_str(source).unwrap();
+}
+
 fn main() {
     if let Some(arg1) = env::args().nth(1) {
         let source = read_file(arg1.clone()).expect("Read file failed");
-        // let mut parser = FTLParser::new(source.trim());
-        // let res = parser.parse();
-        // print_ftl_resource(&res);
-        let mut parser = EntriesParser::new(source.trim());
-        let res = parser.parse();
+        let res = if arg1.contains(".json") {
+          deserialize_json(source.trim())
+        } else {
+          let mut parser = EntriesParser::new(source.trim());
+          parser.parse()
+        };
         print_entries_resource(&res);
     } else {
         println!("You must pass a path to an l20n file");

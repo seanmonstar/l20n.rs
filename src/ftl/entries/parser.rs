@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
         if self.ch_is('[') ||
            self.ch_is('*') {
             let members = self.get_members();
-            entries.insert(id, Value::ComplexValue{ val: value, traits: members });
+            entries.insert(id, Value::ComplexValue{ val: Some(value), traits: Some(members) });
         } else {
             entries.insert(id, Value::Pattern(value));
         }
