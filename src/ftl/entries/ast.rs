@@ -43,8 +43,10 @@ impl Serialize for Value {
   {
     match self {
       &Value::Pattern( Pattern { ref source } ) => serializer.serialize_str(&source),
-      &Value::ComplexValue { ref val, ref traits } => {
-        let num_fields = if !val.is_none() { 1 } else { 2 };
+      &Value::ComplexValue { ref val, ref traits, ref def } => {
+        let mut num_fields = 1;
+        if !val.is_none() { num_fields += 1 };
+        if !def.is_none() { num_fields += 1 };
         let mut map = serializer.serialize_map(Some(num_fields)).unwrap();
         if let &Some(ref v) = val {
             try!(serializer.serialize_map_key(&mut map, "val"));
@@ -52,6 +54,10 @@ impl Serialize for Value {
         }
         try!(serializer.serialize_map_key(&mut map, "traits"));
         try!(serializer.serialize_map_value(&mut map, traits));
+        if let &Some(ref d) = def {
+            try!(serializer.serialize_map_key(&mut map, "def"));
+            try!(serializer.serialize_map_value(&mut map, d));
+        }
         serializer.serialize_map_end(map)
       }
     }
@@ -79,6 +85,7 @@ impl Deserialize for Value {
         {
           let mut val: Option<Pattern> = None;
           let mut traits: Option<Vec<Member>> = None;
+          let mut def: Option<i8> = None;
           while let Some(key) = try!(visitor.visit_key()) {
             let key: String = key;
             match &key as &str {
@@ -90,13 +97,18 @@ impl Deserialize for Value {
                 let value: Vec<Member> = try!(visitor.visit_value());
                 traits = Some(value);
               },
+              "def" => {
+                let value: i8 = try!(visitor.visit_value());
+                def = Some(value);
+              }
               _ => {}
             }
           }
           try!(visitor.end());
           Ok(Value::ComplexValue{
             val: val,
-            traits: traits
+            traits: traits,
+            def: def
           })
         }
       }

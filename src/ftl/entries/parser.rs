@@ -109,16 +109,22 @@ impl<'a> Parser<'a> {
 
         if (self.ch_is('[') && self.source.peek() != Some(&'[')) ||
            self.ch_is('*') {
-            let members = self.get_members();
-            entries.insert(id, Value::ComplexValue{ val: Some(value), traits: Some(members) });
+            let (members, default_index) = self.get_members();
+            entries.insert(id, Value::ComplexValue{
+              val: if value.source.is_empty() { None } else { Some(value) },
+              traits: Some(members),
+              def: default_index
+            });
         } else {
             entries.insert(id, Value::Pattern(value));
         }
 
     }
 
-    fn get_members(&mut self) -> Vec<Member> {
+    fn get_members(&mut self) -> (Vec<Member>, Option<i8>) {
         let mut members = vec![];
+        let mut default_index: Option<i8> = None;
+        let mut index = 0;
 
         loop {
             if (!self.ch_is('[') || self.source.peek() == Some(&'[')) &&
@@ -130,6 +136,7 @@ impl<'a> Parser<'a> {
 
             if def {
               self.bump();
+              default_index = Some(index);
             }
 
             self.bump();
@@ -151,12 +158,13 @@ impl<'a> Parser<'a> {
               val: self.get_pattern(),
             };
             members.push(member);
+            index += 1;
 
             self.get_ws()
 
         }
 
-        members
+        (members, default_index)
     }
 
     fn get_comment(&mut self) {
