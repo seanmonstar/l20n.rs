@@ -1,29 +1,27 @@
 extern crate serde_json;
+extern crate core;
 
 use std::str;
+use self::core::iter::Peekable;
 use super::ast::*;
 use self::serde_json::Map;
 
 
 pub struct Parser<'a> {
-    source: str::Chars<'a>,
+    source: Peekable<str::Chars<'a>>,
     ch: Option<char>,
-    pos: u32,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(source: &'a str) -> Parser<'a> {
         Parser {
-            source: source.chars(),
+            source: source.chars().peekable(),
             ch: None,
-            pos: 0,
         }
     }
 
     fn bump(&mut self) {
         self.ch = self.source.next();
-
-        self.pos += 1;
     }
 
     fn ch_is(&self, ch: char) -> bool {
@@ -109,7 +107,7 @@ impl<'a> Parser<'a> {
             self.get_line_ws();
         }
 
-        if self.ch_is('[') ||
+        if (self.ch_is('[') && self.source.peek() != Some(&'[')) ||
            self.ch_is('*') {
             let members = self.get_members();
             entries.insert(id, Value::ComplexValue{ val: Some(value), traits: Some(members) });
@@ -128,11 +126,10 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let mut def = false;
+            let def = self.ch_is('*');
 
-            if self.ch_is('*') {
+            if def {
               self.bump();
-              def = true;
             }
 
             self.bump();

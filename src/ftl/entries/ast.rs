@@ -1,13 +1,15 @@
 extern crate serde;
 extern crate serde_json;
+extern crate void;
 
 use self::serde::ser::Serializer;
 use self::serde::ser::Serialize;
-use self::serde::de::Deserialize;
-use self::serde::de::Deserializer;
 use self::serde::de::Visitor;
 use self::serde::de::MapVisitor;
 use self::serde::de::Error;
+use self::serde::de::{Deserialize, Deserializer};
+use self::void::Void;
+use std::str::FromStr;
 
 
 use self::serde_json::Map;
@@ -47,11 +49,11 @@ impl Serialize for Value {
         let num_fields = if !val.is_none() { 1 } else { 2 };
         let mut map = serializer.serialize_map(Some(num_fields)).unwrap();
         if let &Some(ref v) = val {
-            serializer.serialize_map_key(&mut map, "val");
-            serializer.serialize_map_value(&mut map, &v.source);
+            try!(serializer.serialize_map_key(&mut map, "val"));
+            try!(serializer.serialize_map_value(&mut map, &v.source));
         }
-        serializer.serialize_map_key(&mut map, "traits");
-        serializer.serialize_map_value(&mut map, traits);
+        try!(serializer.serialize_map_key(&mut map, "traits"));
+        try!(serializer.serialize_map_value(&mut map, traits));
         serializer.serialize_map_end(map)
       }
     }
@@ -110,7 +112,7 @@ pub struct Entity {
     pub value: Value,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize)]
 pub struct Pattern {
     pub source: String,
 }
@@ -123,14 +125,12 @@ impl Serialize for Pattern {
     }
 }
 
-impl Deserialize for Pattern {
-    fn deserialize<D>(deserializer: &mut D) -> Result<Pattern, D::Error>
-      where D: Deserializer
-    {
-        let result: serde_json::Value = try!(serde::Deserialize::deserialize(deserializer));
-        match result {
-          serde_json::Value::String(s) => Ok(Pattern { source: s }),
-          _ => Err(serde::de::Error::custom("Unexpected value")),
-        }
-    }
+impl FromStr for Pattern {
+  type Err = Void;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    Ok(Pattern {
+      source: s.to_string()
+    })
+  }
 }
