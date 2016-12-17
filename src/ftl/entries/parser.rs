@@ -110,8 +110,20 @@ impl<'a> Parser<'a> {
         if (self.ch_is('[') && self.source.peek() != Some(&'[')) ||
            self.ch_is('*') {
             let (members, default_index) = self.get_members();
+
             entries.insert(id, Value::ComplexValue{
-              val: if value.source.is_empty() { None } else { Some(value) },
+              val: match value {
+                Pattern::Simple(v) => {
+                  if v.is_empty() {
+                    None
+                  } else {
+                    Some(Pattern::Simple(v))
+                  }
+                },
+                Pattern::Complex(v) => {
+                  Some(Pattern::Complex(v))
+                }
+              },
               traits: Some(members),
               def: default_index
             });
@@ -141,17 +153,11 @@ impl<'a> Parser<'a> {
 
             self.bump();
 
-            let key = self.get_keyword();
+            let keyword = self.get_keyword();
 
             self.bump();
 
             self.get_line_ws();
-
-            let t = String::from("kw");
-            let keyword = Keyword {
-              t: t,
-              name: key
-            };
 
             let member = Member {
               key: keyword,
@@ -222,8 +228,16 @@ impl<'a> Parser<'a> {
         name
     }
 
-    fn get_keyword(&mut self) -> String {
+    fn get_keyword(&mut self) -> Keyword {
         let mut name = String::new();
+        let mut namespace = self.get_identifier();
+
+        if self.ch_is('/') {
+          self.bump();
+        } else {
+          name = namespace;
+          namespace = String::new();
+        }
 
         let ch = match self.ch {
             Some(c) => c,
@@ -231,10 +245,12 @@ impl<'a> Parser<'a> {
         };
 
         match ch {
-            'a'...'z' | 'A'...'Z' | '_' => name.push(ch),
-            _ => return name,
+            'a'...'z' | 'A'...'Z' | '_' => {
+              self.bump();
+              name.push(ch)
+            },
+            _ => if name.is_empty() { panic!() },
         }
-        self.bump();
 
         loop {
             let ch = match self.ch {
@@ -249,11 +265,16 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
-        name
+        Keyword {
+          t: String::from("kw"),
+          name: name,
+          ns: if namespace.is_empty() { None } else { Some(namespace) }
+        }
     }
 
     fn get_pattern(&mut self) -> Pattern {
-        let mut source = String::new();
+        let mut buffer = String::new();
+        let mut content: Vec<PatternElement> = vec![];
         let mut quote_delimited: bool = false;
         let mut first_line = true;
 
@@ -274,12 +295,12 @@ impl<'a> Parser<'a> {
                     if !self.ch_is('|') {
                         break;
                     }
-                    if first_line && source.len() != 0 {
+                    if first_line && buffer.len() != 0 {
                         panic!("Multiline string should have the ID line empty");
                     }
                     
                     if !first_line {
-                        source.push('\n');
+                        buffer.push('\n');
                     }
                     first_line = false;
                     self.bump();
@@ -292,7 +313,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     if let Some(ch2) = self.ch {
                       if (quote_delimited && ch2 == '"') || ch2 =='{' {
-                          source.push(ch2);
+                          buffer.push(ch2);
                           self.bump();
                           continue;
                       }
@@ -303,7 +324,10 @@ impl<'a> Parser<'a> {
                     quote_delimited = false;
                     break;
                 }
-                Some(c) => source.push(c),
+                Some(c) if c == '{' => {
+                  
+                }
+                Some(c) => buffer.push(c),
                 None => break,
             }
             self.bump();
@@ -313,11 +337,7 @@ impl<'a> Parser<'a> {
             panic!("Unclosed string");
         }
 
-        if source.len() == 0 {
-            return Pattern {source: source};
-        }
-
-        Pattern {source: source }
+        Pattern::Simple(buffer)
     }
 
 }

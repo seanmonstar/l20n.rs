@@ -19,8 +19,6 @@ use std::io;
 
 use getopts::Options;
 
-static VERSION: &'static str = "1.0.0";
-
 fn read_file(path: &String) -> Result<String, io::Error> {
   let mut f = try!(File::open(path));
   let mut s = String::new();

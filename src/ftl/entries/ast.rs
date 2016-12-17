@@ -5,6 +5,7 @@ use self::serde::ser::Serializer;
 use self::serde::ser::Serialize;
 use self::serde::de::Visitor;
 use self::serde::de::MapVisitor;
+use self::serde::de::SeqVisitor;
 use self::serde::de::Error;
 use self::serde::de::{Deserialize, Deserializer};
 
@@ -18,6 +19,8 @@ pub struct Resource(pub Map<String, Value>);
 pub struct Keyword {
   #[serde(rename="type")]
   pub t: String,
+  #[serde(skip_serializing_if="Option::is_none")]
+  pub ns: Option<String>,
   pub name: String
 }
 
@@ -42,7 +45,7 @@ impl Serialize for Value {
     where S: Serializer
   {
     match self {
-      &Value::Pattern( Pattern { ref source } ) => serializer.serialize_str(&source),
+      &Value::Pattern(ref v) => Pattern::serialize(v, serializer),
       &Value::ComplexValue { ref val, ref traits, ref def } => {
         let mut num_fields = 1;
         if !val.is_none() { num_fields += 1 };
@@ -50,7 +53,7 @@ impl Serialize for Value {
         let mut map = serializer.serialize_map(Some(num_fields)).unwrap();
         if let &Some(ref v) = val {
             try!(serializer.serialize_map_key(&mut map, "val"));
-            try!(serializer.serialize_map_value(&mut map, &v.source));
+            try!(serializer.serialize_map_value(&mut map, &v));
         }
         try!(serializer.serialize_map_key(&mut map, "traits"));
         try!(serializer.serialize_map_value(&mut map, traits));
@@ -77,7 +80,7 @@ impl Deserialize for Value {
         fn visit_str<E>(&mut self, value: &str) -> Result<Value, E>
           where E: Error
         {
-          Ok(Value::Pattern(Pattern { source: String::from(value) }))
+          Ok(Value::Pattern(Pattern::Simple(String::from(value))))
         }
 
         fn visit_map<V>(&mut self, mut visitor: V) -> Result<Value, V::Error>
@@ -91,7 +94,7 @@ impl Deserialize for Value {
             match &key as &str {
               "val" => {
                 let value: String = try!(visitor.visit_value());
-                val = Some(Pattern { source: value });
+                val = Some(Pattern::Simple(value));
               },
               "traits" => {
                 let value: Vec<Member> = try!(visitor.visit_value());
@@ -112,6 +115,7 @@ impl Deserialize for Value {
           })
         }
       }
+
       deserializer.deserialize_struct_field(FieldVisitor)
     }
 }
@@ -122,27 +126,57 @@ pub struct Entity {
     pub value: Value,
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub enum PatternElement {
+  String,
+//  Placeable
+}
+
 #[derive(Debug, PartialEq)]
-pub struct Pattern {
-    pub source: String,
+pub enum Pattern {
+  Simple(String),
+  Complex(Vec<PatternElement>)
 }
 
 impl Serialize for Pattern {
-    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
-      where S: Serializer
-    {
-        serializer.serialize_str(&self.source)
+  fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+    where S: Serializer
+  {
+    match self {
+      &Pattern::Simple(ref v) => serializer.serialize_str(v),
+      &Pattern::Complex(ref v) => panic!(),
     }
+  }
 }
 
 impl Deserialize for Pattern {
     fn deserialize<D>(deserializer: &mut D) -> Result<Pattern, D::Error>
       where D: Deserializer
     {
-        let result: serde_json::Value = try!(serde::Deserialize::deserialize(deserializer));
-        match result {
-          serde_json::Value::String(s) => Ok(Pattern { source: s }),
-          _ => Err(serde::de::Error::custom("Unexpected value")),
+      struct FieldVisitor;
+
+      impl Visitor for FieldVisitor {
+        type Value = Pattern;
+
+        fn visit_str<E>(&mut self, value: &str) -> Result<Pattern, E>
+          where E: Error
+        {
+          Ok(Pattern::Simple(String::from(value)))
         }
+
+        fn visit_seq<V>(&mut self, mut visitor: V) -> Result<Pattern, V::Error>
+          where V: SeqVisitor
+        {
+          let mut content: Vec<PatternElement> = vec![];
+
+          while let Some(elem) = try!(visitor.visit()) {
+            let elem: String = elem;
+          }
+          try!(visitor.end());
+          Ok(Pattern::Complex(content))
+        }
+      }
+      deserializer.deserialize_struct_field(FieldVisitor)
     }
 }
+
