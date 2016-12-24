@@ -104,7 +104,7 @@ impl<'a> Parser<'a> {
 
         loop {
             match self.peek_char() {
-                Some(&ch) => {
+                Some(_) => {
                     self.source.reset_peek();
                     self.get_entry(&mut entries);
                     self.skip_ws();
@@ -161,6 +161,8 @@ impl<'a> Parser<'a> {
         if !self.peek_char_eq('=') {
             panic!();
         }
+
+        self.bump();
 
         self.skip_line_ws(true);
 
@@ -225,7 +227,7 @@ impl<'a> Parser<'a> {
 
                     self.skip_line_ws(true);
 
-                    let keyword = self.get_keyword();
+                    let keyword = self.get_member_key();
 
                     self.skip_line_ws(true);
 
@@ -403,6 +405,20 @@ impl<'a> Parser<'a> {
                             quote_delimited = false;
                             break;
                         },
+                        '{' => {
+                            if buffer.len() != 0 {
+                                content.push(
+                                    PatternElement::TextElement(
+                                        buffer.clone()
+                                    )
+                                );
+                            }
+                            buffer.clear();
+                            
+                            content.push(self.get_placeable());
+
+                            continue;
+                        },
                         _ => {
                             buffer.push(ch);
                         }
@@ -417,6 +433,321 @@ impl<'a> Parser<'a> {
             panic!("Unclosed string");
         }
 
-        Pattern::Simple(buffer)
+        if content.len() == 0 {
+            Pattern::Simple(buffer)
+        } else {
+            if buffer.len() != 0 {
+                content.push(PatternElement::TextElement(buffer.clone()));
+            }
+            Pattern::Complex(content)
+        }
+
+    }
+
+    fn get_placeable(&mut self) -> PatternElement {
+        let mut expressions = vec![];
+
+        self.bump();
+        self.skip_line_ws(true);
+
+        loop {
+            expressions.push(self.get_placeable_expression());
+
+            self.skip_line_ws(true);
+
+            match self.peek_char() {
+                Some(&ch) => match ch {
+                    '}' => {
+                        self.bump();
+                        break;
+                    },
+                    ',' => {
+                        self.bump();
+                        self.skip_ws();
+                    },
+                    _ => panic!(),
+                },
+              None => panic!(),
+            }
+        }
+
+        PatternElement::PlaceableElement(expressions)
+    }
+
+    fn get_placeable_expression(&mut self) -> Expression {
+        let selector = self.get_call_expression();
+
+        self.skip_line_ws(true);
+
+        match self.peek_char() {
+            Some(&ch) => match ch {
+                '-' => {
+                    if self.peek_char_eq('>') {
+                        self.bump();
+                        self.bump();
+
+
+                        self.skip_line_ws(true);
+
+                        if !self.peek_char_eq('\n') {
+                            panic!();
+                        }
+
+                        self.skip_ws();
+
+                        let (members, default_index) = self.get_members();
+
+                        return Expression::SelectExpression {
+                            exp: Box::new(selector),
+                            vars: members,
+                            def: default_index
+                        }
+                    } else {
+                        self.source.reset_peek()
+                    }
+                },
+                _ => {
+                    self.source.reset_peek();
+                },
+            },
+            None => panic!(),
+        }
+
+        return selector;
+    }
+
+    fn get_call_expression(&mut self) -> Expression {
+        let exp = self.get_member_expression();
+
+        if !self.peek_char_eq('(') {
+            self.source.reset_peek();
+            return exp;
+        }
+
+        self.bump();
+
+        let args = self.get_call_args();
+
+        self.bump();
+
+        Expression::CallExpression {
+            name: Box::new(exp),
+            args: args
+        }
+    }
+
+    fn get_call_args(&mut self) -> Vec<Expression> {
+        let mut args = vec![];
+
+        self.skip_line_ws(true);
+
+        loop {
+            match self.peek_char() {
+                Some(&ch) => match ch {
+                    ')' => {
+                        self.source.reset_peek();
+                        break;
+                    },
+                    ',' => {
+                        self.bump();
+                        self.skip_line_ws(true);
+                    },
+                    _ => {
+                        self.source.reset_peek();
+                        let exp = self.get_call_expression();
+
+                        self.skip_line_ws(true);
+
+
+                        if self.peek_char_eq(':') {
+                            self.bump();
+                            self.skip_line_ws(true);
+
+                            let val = self.get_call_expression();
+
+                            match exp {
+                                Expression::EntityReference(name) => {
+                                    args.push(Expression::KeyValueArgument {
+                                        name: name,
+                                        val: Box::new(val)
+                                    });
+                                },
+                                _ => {
+                                    panic!();
+                                }
+                            }
+                        } else {
+                            self.source.reset_peek();
+                            args.push(exp);
+                        }
+                    }
+                },
+                None => panic!()
+            }
+        }
+
+        args
+    }
+
+    fn get_number(&mut self) -> Expression {
+        let mut num = String::new();
+
+        if self.peek_char_eq('-') {
+            num.push('-');
+            self.bump();
+        } else {
+            self.source.reset_peek();
+        }
+
+        match self.peek_char() {
+            Some(&ch) => match ch {
+                '0' ... '9' => {
+                    num.push(ch);
+                    self.bump();
+                },
+                _ => panic!(),
+            },
+            None => panic!(),
+        }
+
+        loop {
+            match self.peek_char() {
+                Some(&ch) => match ch {
+                    '0' ... '9' => {
+                        num.push(ch);
+                    },
+                    _ => {
+                        self.source.reset_peek();
+                        break;
+                    },
+                },
+                None => {
+                    self.source.reset_peek();
+                    break;
+                },
+            }
+            self.bump();
+        }
+
+        if self.peek_char_eq('.') {
+            num.push('.');
+            self.bump();
+
+            match self.peek_char() {
+                Some(&ch) => match ch {
+                    '0' ... '9' => {
+                        num.push(ch);
+                        self.bump();
+                    },
+                    _ => panic!(),
+                },
+                None => panic!(),
+            }
+
+            loop {
+                match self.peek_char() {
+                    Some(&ch) => match ch {
+                        '0' ... '9' => {
+                            num.push(ch);
+                        },
+                        _ => {
+                            self.source.reset_peek();
+                            break;
+                        },
+                    },
+                    None => {
+                        self.source.reset_peek();
+                        break;
+                    },
+                }
+                self.bump();
+            }
+
+        } else {
+            self.source.reset_peek();
+        }
+
+        Expression::Number(num)
+    }
+
+    fn get_member_expression(&mut self) -> Expression {
+        let mut exp = self.get_literal();
+
+        loop {
+            if self.peek_char_eq('[') {
+                self.bump();
+                let keyword = self.get_member_key();
+                self.bump();
+
+                exp = Expression::Member {
+                    obj: Box::new(exp),
+                    key: keyword
+                }
+            } else {
+                self.source.reset_peek();
+                break;
+            }
+        }
+        exp
+    }
+
+    fn get_member_key(&mut self) -> MemberKey {
+        match self.peek_char() {
+            Some(&ch) => match ch {
+                '0'...'9' | '-' => {
+                    let num = self.get_number();
+                    match self.get_number() {
+                        Expression::Number(val) => {
+                            return MemberKey::Number(val);
+                        },
+                        _ => panic!()
+                    }
+                },
+                _ => {
+                    return MemberKey::Keyword(self.get_keyword());
+                }
+            },
+            None => panic!()
+        }
+    }
+
+    fn get_literal(&mut self) -> Expression {
+        match self.peek_char() {
+            Some(&ch) => match ch {
+                '0' ... '9' | '-' => {
+                    self.source.reset_peek();
+                    return self.get_number();
+                },
+                '"' => {
+                    let pat = self.get_pattern();
+                    match pat {
+                        Pattern::Simple(val) => {
+                            return Expression::Pattern(val);
+                        },
+                        _ => {
+                            panic!();
+                        }
+                    }
+                },
+                '$' => {
+                    self.bump();
+                    return Expression::ExternalArgument(
+                        self.get_identifier()
+                    )
+                },
+                _ => {
+                    self.source.reset_peek();
+                    return Expression::EntityReference(
+                        self.get_identifier()
+                    )
+                }
+            },
+            None => panic!(),
+        }
+    }
+
+    fn dump_ptr(&mut self) {
+        println!("{:?}", self.peek_char().unwrap());
+        println!("{:?}", self.read_char().unwrap());
     }
 }

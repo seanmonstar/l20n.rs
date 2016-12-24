@@ -25,8 +25,14 @@ pub struct Keyword {
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub enum MemberKey {
+    Keyword(Keyword),
+    Number(String)
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Member {
-    pub key: Keyword,
+    pub key: MemberKey,
     pub val: Pattern,
 }
 
@@ -130,9 +136,129 @@ pub struct Entity {
     pub value: Value,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize)]
+pub enum Expression {
+    ExternalArgument(String),
+    EntityReference(String),
+    Number(String),
+    CallExpression {
+        name: Box<Expression>,
+        args: Vec<Expression>
+    },
+    SelectExpression {
+        exp: Box<Expression>,
+        vars: Vec<Member>,
+        def: Option<i8>
+    },
+    KeyValueArgument {
+        name: String,
+        val: Box<Expression>
+    },
+    Member {
+        obj: Box<Expression>,
+        key: MemberKey,
+    },
+    Pattern(String),
+}
+
+impl Serialize for Expression {
+    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        where S: Serializer
+    {
+        match self {
+            &Expression::ExternalArgument(ref name) => {
+                let mut map = serializer.serialize_map(Some(2)).unwrap();
+                try!(serializer.serialize_map_key(&mut map, "type"));
+                try!(serializer.serialize_map_value(&mut map, "ext"));
+                try!(serializer.serialize_map_key(&mut map, "name"));
+                try!(serializer.serialize_map_value(&mut map, name));
+                serializer.serialize_map_end(map)
+            },
+            &Expression::EntityReference(ref name) => {
+                let mut map = serializer.serialize_map(Some(2)).unwrap();
+                try!(serializer.serialize_map_key(&mut map, "type"));
+                try!(serializer.serialize_map_value(&mut map, "ref"));
+                try!(serializer.serialize_map_key(&mut map, "name"));
+                try!(serializer.serialize_map_value(&mut map, name));
+                serializer.serialize_map_end(map)
+            },
+            &Expression::Number(ref val) => {
+                let mut map = serializer.serialize_map(Some(2)).unwrap();
+                try!(serializer.serialize_map_key(&mut map, "type"));
+                try!(serializer.serialize_map_value(&mut map, "num"));
+                try!(serializer.serialize_map_key(&mut map, "val"));
+                try!(serializer.serialize_map_value(&mut map, val));
+                serializer.serialize_map_end(map)
+            },
+            &Expression::SelectExpression { ref exp, ref vars, ..} => {
+                let mut map = serializer.serialize_map(Some(3)).unwrap();
+                try!(serializer.serialize_map_key(&mut map, "type"));
+                try!(serializer.serialize_map_value(&mut map, "sel"));
+                try!(serializer.serialize_map_key(&mut map, "exp"));
+                try!(serializer.serialize_map_value(&mut map, exp));
+                try!(serializer.serialize_map_key(&mut map, "vars"));
+                try!(serializer.serialize_map_value(&mut map, vars));
+                serializer.serialize_map_end(map)
+            },
+            &Expression::CallExpression { ref name, ref args} => {
+                let mut map = serializer.serialize_map(Some(3)).unwrap();
+                try!(serializer.serialize_map_key(&mut map, "type"));
+                try!(serializer.serialize_map_value(&mut map, "call"));
+                try!(serializer.serialize_map_key(&mut map, "name"));
+                try!(serializer.serialize_map_value(&mut map, name));
+                try!(serializer.serialize_map_key(&mut map, "args"));
+                try!(serializer.serialize_map_value(&mut map, args));
+                serializer.serialize_map_end(map)
+            },
+            &Expression::KeyValueArgument { ref name, ref val} => {
+                let mut map = serializer.serialize_map(Some(3)).unwrap();
+                try!(serializer.serialize_map_key(&mut map, "type"));
+                try!(serializer.serialize_map_value(&mut map, "kw"));
+                try!(serializer.serialize_map_key(&mut map, "name"));
+                try!(serializer.serialize_map_value(&mut map, name));
+                try!(serializer.serialize_map_key(&mut map, "val"));
+                try!(serializer.serialize_map_value(&mut map, val));
+                serializer.serialize_map_end(map)
+            },
+            &Expression::Member { ref obj, ref key} => {
+                let mut map = serializer.serialize_map(Some(3)).unwrap();
+                try!(serializer.serialize_map_key(&mut map, "type"));
+                try!(serializer.serialize_map_value(&mut map, "mem"));
+                try!(serializer.serialize_map_key(&mut map, "obj"));
+                try!(serializer.serialize_map_value(&mut map, obj));
+                try!(serializer.serialize_map_key(&mut map, "key"));
+                try!(serializer.serialize_map_value(&mut map, key));
+                serializer.serialize_map_end(map)
+            },
+            &Expression::Pattern(ref val) => {
+                serializer.serialize_str(val)
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
 pub enum PatternElement {
-    String, //  Placeable
+    TextElement(String),
+    PlaceableElement(Vec<Expression>),
+}
+
+impl Serialize for PatternElement {
+    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        where S: Serializer
+    {
+        match self {
+            &PatternElement::TextElement(ref v) => serializer.serialize_str(v),
+            &PatternElement::PlaceableElement(ref v) => {
+                let mut state = try!(serializer.serialize_seq(Some(v.len())));
+                for e in v {
+                  try!(serializer.serialize_seq_elt(&mut state, e));
+                }
+                serializer.serialize_seq_end(state)
+            }
+
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -147,7 +273,14 @@ impl Serialize for Pattern {
     {
         match self {
             &Pattern::Simple(ref v) => serializer.serialize_str(v),
-            &Pattern::Complex(ref v) => panic!(),
+            &Pattern::Complex(ref v) => {
+                let mut state = try!(serializer.serialize_seq(Some(v.len())));
+                for e in v {
+                  try!(serializer.serialize_seq_elt(&mut state, e));
+                }
+                serializer.serialize_seq_end(state)
+            }
+
         }
     }
 }

@@ -7,9 +7,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate getopts;
 
-use self::ftl::ast::parser::Parser as FTLParser;
 use self::ftl::entries::parser::Parser as EntriesParser;
-use self::ftl::ast::ast::Resource as ASTResource;
 use self::ftl::entries::ast::Resource as EntriesResource;
 
 use std::fs::File;
@@ -24,11 +22,6 @@ fn read_file(path: &String) -> Result<String, io::Error> {
     let mut s = String::new();
     try!(f.read_to_string(&mut s));
     Ok(s)
-}
-
-fn print_ast_resource(res: &ASTResource) {
-    let e = serde_json::to_string_pretty(res).unwrap();
-    println!("{}", e);
 }
 
 fn print_entries_resource(res: &EntriesResource) {
