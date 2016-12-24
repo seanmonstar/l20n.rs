@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Zibi Braniecki <gandalf@mozilla.com>"]
 
 [dependencies]
+itertools = { git = "https://github.com/bluss/rust-itertools" }
 serde = "0.8.19"
 serde_json = "0.8.4"
 serde_derive = "0.8.19"

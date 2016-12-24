@@ -24,7 +24,7 @@ pub struct Entity {
     pub id: Identifier,
     pub value: Option<Pattern>,
     pub traits: Option<Vec<Member>>,
-    pub comment: Option<String>
+    pub comment: Option<String>,
 }
 
 // impl Serialize for Entity {
@@ -69,7 +69,7 @@ pub struct Identifier(pub String);
 pub struct Keyword(pub String);
 
 fn is_false(s: &bool) -> bool {
-  return !*s;
+    return !*s;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -111,9 +111,9 @@ pub struct Pattern {
 }
 
 impl Serialize for Pattern {
-  fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
-    where S: Serializer
-  {
-    serializer.serialize_str(&self.source)
-  }
+    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        where S: Serializer
+    {
+        serializer.serialize_str(&self.source)
+    }
 }

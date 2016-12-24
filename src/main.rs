@@ -20,10 +20,10 @@ use std::io;
 use getopts::Options;
 
 fn read_file(path: &String) -> Result<String, io::Error> {
-  let mut f = try!(File::open(path));
-  let mut s = String::new();
-  try!(f.read_to_string(&mut s));
-  Ok(s)
+    let mut f = try!(File::open(path));
+    let mut s = String::new();
+    try!(f.read_to_string(&mut s));
+    Ok(s)
 }
 
 fn print_ast_resource(res: &ASTResource) {
@@ -53,8 +53,8 @@ fn main() {
     opts.optflag("s", "silence", "disable output");
     opts.optflag("h", "help", "print this help menu");
     let matches = match opts.parse(&args[1..]) {
-        Ok(m) => { m }
-        Err(f) => { panic!(f.to_string()) }
+        Ok(m) => m,
+        Err(f) => panic!(f.to_string()),
     };
     if matches.opt_present("h") {
         print_usage(&program, opts);
@@ -70,14 +70,14 @@ fn main() {
 
     let source = read_file(&input).expect("Read file failed");
     let res = if input.contains(".json") {
-      deserialize_json(source.trim())
+        deserialize_json(source.trim())
     } else {
-      let mut parser = EntriesParser::new(source.trim());
-      parser.parse()
+        let mut parser = EntriesParser::new(source.trim());
+        parser.parse()
     };
 
     if !matches.opt_present("s") {
-      print_entries_resource(&res);
+        print_entries_resource(&res);
     }
 }
 

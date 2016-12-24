@@ -119,8 +119,7 @@ impl<'a> Parser<'a> {
         }
 
         let mut members: Option<Vec<Member>> = None;
-        if self.ch_is('[') ||
-           self.ch_is('*') {
+        if self.ch_is('[') || self.ch_is('*') {
             members = Some(self.get_members());
         }
 
@@ -128,7 +127,7 @@ impl<'a> Parser<'a> {
             id: id,
             value: value,
             traits: members,
-            comment: None
+            comment: None,
         })
     }
 
@@ -228,11 +227,11 @@ impl<'a> Parser<'a> {
                 Some(c) if c == '\\' => {
                     self.bump();
                     if let Some(ch2) = self.ch {
-                      if (quote_delimited && ch2 == '"') || ch2 =='{' {
-                          source.push(ch2);
-                          self.bump();
-                          continue;
-                      }
+                        if (quote_delimited && ch2 == '"') || ch2 == '{' {
+                            source.push(ch2);
+                            self.bump();
+                            continue;
+                        }
                     }
                 }
                 Some(c) if c == '"' => {
@@ -266,16 +265,15 @@ impl<'a> Parser<'a> {
         let mut members = vec![];
 
         loop {
-            if !self.ch_is('[') &&
-               !self.ch_is('*') {
+            if !self.ch_is('[') && !self.ch_is('*') {
                 break;
             }
 
             let mut def = false;
 
             if self.ch_is('*') {
-              self.bump();
-              def = true;
+                self.bump();
+                def = true;
             }
 
             self.bump();
@@ -287,9 +285,9 @@ impl<'a> Parser<'a> {
             self.get_line_ws();
 
             let member = Member {
-              key: key,
-              value: self.get_pattern(),
-              default: def,
+                key: key,
+                value: self.get_pattern(),
+                default: def,
             };
             members.push(member);
 
@@ -329,7 +327,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Entry::Comment(Comment ( content ))
+        Entry::Comment(Comment(content))
 
     }
 }
