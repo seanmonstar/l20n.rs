@@ -1,13 +1,9 @@
 extern crate serde;
 extern crate serde_json;
 
-use self::serde::ser::Serializer;
-use self::serde::ser::Serialize;
-use self::serde::de::Visitor;
-use self::serde::de::MapVisitor;
-use self::serde::de::SeqVisitor;
-use self::serde::de::Error;
-use self::serde::de::{Deserialize, Deserializer};
+use self::serde::ser::{Serialize, Serializer};
+use self::serde::de::{Deserialize, Deserializer, Visitor, MapVisitor, SeqVisitor, Error};
+use self::serde::de::value::{ValueDeserializer, SeqVisitorDeserializer};
 
 
 use self::serde_json::Map;
@@ -65,7 +61,7 @@ impl Serialize for MemberKey {
 }
 
 impl Deserialize for MemberKey {
-    fn deserialize<D>(deserializer: &mut D) -> Result<MemberKey, D::Error>
+    fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
         where D: Deserializer
     {
         struct FieldVisitor;
@@ -138,9 +134,9 @@ impl Serialize for Value {
     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
         where S: Serializer
     {
-        match self {
-            &Value::Pattern(ref v) => Pattern::serialize(v, serializer),
-            &Value::ComplexValue { ref val, ref traits, ref def } => {
+        match *self {
+            Value::Pattern(ref v) => v.serialize(serializer),
+            Value::ComplexValue { ref val, ref traits, ref def } => {
                 let mut num_fields = 1;
                 if !val.is_none() {
                     num_fields += 1
@@ -167,7 +163,7 @@ impl Serialize for Value {
 
 
 impl Deserialize for Value {
-    fn deserialize<D>(deserializer: &mut D) -> Result<Value, D::Error>
+    fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
         where D: Deserializer
     {
         struct FieldVisitor;
@@ -175,13 +171,22 @@ impl Deserialize for Value {
         impl Visitor for FieldVisitor {
             type Value = Value;
 
-            fn visit_str<E>(&mut self, value: &str) -> Result<Value, E>
+            fn visit_str<E>(&mut self, value: &str) -> Result<Self::Value, E>
                 where E: Error
             {
-                Ok(Value::Pattern(Pattern::Simple(String::from(value))))
+                let mut deserializer = value.into_deserializer();
+                Deserialize::deserialize(&mut deserializer).map(Value::Pattern)
             }
 
-            fn visit_map<V>(&mut self, mut visitor: V) -> Result<Value, V::Error>
+
+            fn visit_seq<V>(&mut self, visitor: V) -> Result<Self::Value, V::Error>
+                where V: SeqVisitor
+            {
+                let mut deserializer = SeqVisitorDeserializer::new(visitor);
+                Deserialize::deserialize(&mut deserializer).map(Value::Pattern)
+            }
+
+            fn visit_map<V>(&mut self, mut visitor: V) -> Result<Self::Value, V::Error>
                 where V: MapVisitor
             {
                 let mut val: Option<Pattern> = None;
@@ -191,16 +196,13 @@ impl Deserialize for Value {
                     let key: String = key;
                     match &key as &str {
                         "val" => {
-                            let value: String = try!(visitor.visit_value());
-                            val = Some(Pattern::Simple(value));
+                            val = Some(visitor.visit_value()?);
                         }
                         "traits" => {
-                            let value: Vec<Member> = try!(visitor.visit_value());
-                            traits = Some(value);
+                            traits = Some(visitor.visit_value()?);
                         }
                         "def" => {
-                            let value: i8 = try!(visitor.visit_value());
-                            def = Some(value);
+                            def = Some(visitor.visit_value()?);
                         }
                         _ => {}
                     }
@@ -218,13 +220,7 @@ impl Deserialize for Value {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct Entity {
-    pub id: String,
-    pub value: Value,
-}
-
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     ExternalArgument(String),
     EntityReference(String),
@@ -320,7 +316,60 @@ impl Serialize for Expression {
     }
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+impl Deserialize for Expression {
+    fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
+        where D: Deserializer
+    {
+        struct FieldVisitor;
+
+        impl Visitor for FieldVisitor {
+            type Value = Expression;
+
+            fn visit_map<V>(&mut self, mut visitor: V) -> Result<Self::Value, V::Error>
+                where V: MapVisitor
+            {
+                let mut name: Option<String> = None;
+                let mut t: Option<String> = None;
+
+                while let Some(key) = visitor.visit_key::<String>()? {
+                    if key == "type" {
+                        t = Some(visitor.visit_value()?);
+                    }
+                    if key == "name" {
+                        name = Some(visitor.visit_value()?);
+                    }
+                }
+                visitor.end()?;
+
+                let t = match t {
+                    Some(t) => t,
+                    None => visitor.missing_field("type")?,
+                };
+
+                let name = match name {
+                    Some(name) => name,
+                    None => visitor.missing_field("name")?,
+                };
+
+                match t.as_str() {
+                    "ext" => {
+                        Ok(Expression::ExternalArgument(name))
+                    },
+                    "ref" => {
+                        Ok(Expression::EntityReference(name))
+                    },
+                    _ => {
+                        panic!()
+                    }
+                }
+            }
+        }
+
+        deserializer.deserialize_struct_field(FieldVisitor)
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub enum PatternElement {
     TextElement(String),
     PlaceableElement(Vec<Expression>),
@@ -341,6 +390,32 @@ impl Serialize for PatternElement {
             }
 
         }
+    }
+}
+
+impl Deserialize for PatternElement {
+    fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
+        where D: Deserializer
+    {
+        struct FieldVisitor;
+
+        impl Visitor for FieldVisitor {
+            type Value = PatternElement;
+
+            fn visit_str<E>(&mut self, v: &str) -> Result<Self::Value, E>
+                where E: Error
+            {
+                Ok(PatternElement::TextElement(v.to_owned()))
+            }
+
+            fn visit_seq<V>(&mut self, visitor: V) -> Result<Self::Value, V::Error>
+                where V: SeqVisitor
+            {
+                let mut deserializer = SeqVisitorDeserializer::new(visitor);
+                Deserialize::deserialize(&mut deserializer).map(PatternElement::PlaceableElement)
+            }
+        }
+        deserializer.deserialize_struct_field(FieldVisitor)
     }
 }
 
@@ -369,7 +444,7 @@ impl Serialize for Pattern {
 }
 
 impl Deserialize for Pattern {
-    fn deserialize<D>(deserializer: &mut D) -> Result<Pattern, D::Error>
+    fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
         where D: Deserializer
     {
         struct FieldVisitor;
@@ -377,22 +452,17 @@ impl Deserialize for Pattern {
         impl Visitor for FieldVisitor {
             type Value = Pattern;
 
-            fn visit_str<E>(&mut self, value: &str) -> Result<Pattern, E>
+            fn visit_str<E>(&mut self, v: &str) -> Result<Self::Value, E>
                 where E: Error
             {
-                Ok(Pattern::Simple(String::from(value)))
+                Ok(Pattern::Simple(v.to_owned()))
             }
 
-            fn visit_seq<V>(&mut self, mut visitor: V) -> Result<Pattern, V::Error>
+            fn visit_seq<V>(&mut self, visitor: V) -> Result<Self::Value, V::Error>
                 where V: SeqVisitor
             {
-                let mut content: Vec<PatternElement> = vec![];
-
-                while let Some(elem) = try!(visitor.visit()) {
-                    let elem: String = elem;
-                }
-                try!(visitor.end());
-                Ok(Pattern::Complex(content))
+                let mut deserializer = SeqVisitorDeserializer::new(visitor);
+                Deserialize::deserialize(&mut deserializer).map(Pattern::Complex)
             }
         }
         deserializer.deserialize_struct_field(FieldVisitor)
