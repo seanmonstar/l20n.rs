@@ -336,7 +336,6 @@ impl<'a> Parser<'a> {
         }
 
         Keyword {
-            t: String::from("kw"),
             name: name,
             ns: if namespace.is_empty() {
                 None
@@ -589,7 +588,7 @@ impl<'a> Parser<'a> {
         args
     }
 
-    fn get_number(&mut self) -> Expression {
+    fn get_number(&mut self) -> Number {
         let mut num = String::new();
 
         if self.peek_char_eq('-') {
@@ -667,7 +666,7 @@ impl<'a> Parser<'a> {
             self.source.reset_peek();
         }
 
-        Expression::Number(num)
+        Number(num)
     }
 
     fn get_member_expression(&mut self) -> Expression {
@@ -696,12 +695,7 @@ impl<'a> Parser<'a> {
             Some(&ch) => match ch {
                 '0'...'9' | '-' => {
                     let num = self.get_number();
-                    match self.get_number() {
-                        Expression::Number(val) => {
-                            return MemberKey::Number(val);
-                        },
-                        _ => panic!()
-                    }
+                    return MemberKey::Number(num);
                 },
                 _ => {
                     return MemberKey::Keyword(self.get_keyword());
@@ -716,7 +710,7 @@ impl<'a> Parser<'a> {
             Some(&ch) => match ch {
                 '0' ... '9' | '-' => {
                     self.source.reset_peek();
-                    return self.get_number();
+                    return Expression::Number(self.get_number());
                 },
                 '"' => {
                     let pat = self.get_pattern();

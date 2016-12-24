@@ -15,19 +15,107 @@ use self::serde_json::Map;
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Resource(pub Map<String, Value>);
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize)]
 pub struct Keyword {
-    #[serde(rename="type")]
-    pub t: String,
     #[serde(skip_serializing_if="Option::is_none")]
     pub ns: Option<String>,
     pub name: String,
 }
 
+impl Serialize for Keyword {
+    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        where S: Serializer
+    {
+        let num_fields = if self.ns.is_some() { 3 } else { 2 };
+
+        let mut map = serializer.serialize_map(Some(num_fields)).unwrap();
+        try!(serializer.serialize_map_key(&mut map, "type"));
+        try!(serializer.serialize_map_value(&mut map, "kw"));
+        try!(serializer.serialize_map_key(&mut map, "name"));
+        try!(serializer.serialize_map_value(&mut map, &self.name));
+        match self.ns {
+            Some(ref v) => {
+                try!(serializer.serialize_map_key(&mut map, "ns"));
+                try!(serializer.serialize_map_value(&mut map, v));
+            },
+            None => {}
+        }
+        serializer.serialize_map_end(map)
+    }
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Number(pub String);
+
+#[derive(Debug, PartialEq)]
 pub enum MemberKey {
     Keyword(Keyword),
-    Number(String)
+    Number(Number)
+}
+
+impl Serialize for MemberKey {
+    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        where S: Serializer
+    {
+        match self {
+            &MemberKey::Keyword(ref v) => Keyword::serialize(v, serializer),
+            &MemberKey::Number(ref v) => Number::serialize(v, serializer),
+        }
+    }
+}
+
+impl Deserialize for MemberKey {
+    fn deserialize<D>(deserializer: &mut D) -> Result<MemberKey, D::Error>
+        where D: Deserializer
+    {
+        struct FieldVisitor;
+
+        impl Visitor for FieldVisitor {
+            type Value = MemberKey;
+
+            fn visit_map<V>(&mut self, mut visitor: V) -> Result<MemberKey, V::Error>
+                where V: MapVisitor
+            {
+                let mut v: Option<String> = None;
+                let mut t: Option<String> = None;
+                let mut ns: Option<String> = None;
+
+                while let Some(key) = try!(visitor.visit_key()) {
+                    let key: String = key;
+                    match &key as &str {
+                        "name" => {
+                            let val: String = try!(visitor.visit_value());
+                            v = Some(val);
+                        },
+                        "type" => {
+                            let val: String = try!(visitor.visit_value());
+                            t = Some(val);
+                        },
+                        "ns" => {
+                            let val: String = try!(visitor.visit_value());
+                            ns = Some(val);
+                        }
+                        _ => {}
+                    }
+                }
+                try!(visitor.end());
+
+                match t {
+                    Some(ch) => match ch.as_str() {
+                        "kw" => Ok(MemberKey::Keyword(Keyword {
+                            name: v.unwrap(),
+                            ns: ns
+                        })),
+                        "num" => Ok(MemberKey::Number(Number(v.unwrap()))),
+                        _ => panic!()
+                    },
+                    None => panic!()
+                }
+            }
+        }
+
+        deserializer.deserialize_struct_field(FieldVisitor)
+    }
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -140,7 +228,7 @@ pub struct Entity {
 pub enum Expression {
     ExternalArgument(String),
     EntityReference(String),
-    Number(String),
+    Number(Number),
     CallExpression {
         name: Box<Expression>,
         args: Vec<Expression>
@@ -183,12 +271,7 @@ impl Serialize for Expression {
                 serializer.serialize_map_end(map)
             },
             &Expression::Number(ref val) => {
-                let mut map = serializer.serialize_map(Some(2)).unwrap();
-                try!(serializer.serialize_map_key(&mut map, "type"));
-                try!(serializer.serialize_map_value(&mut map, "num"));
-                try!(serializer.serialize_map_key(&mut map, "val"));
-                try!(serializer.serialize_map_value(&mut map, val));
-                serializer.serialize_map_end(map)
+                Number::serialize(val, serializer)
             },
             &Expression::SelectExpression { ref exp, ref vars, ..} => {
                 let mut map = serializer.serialize_map(Some(3)).unwrap();
