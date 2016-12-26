@@ -3,7 +3,7 @@ extern crate serde_json;
 
 use self::serde::ser::{Serialize, Serializer};
 use self::serde::de::{Deserialize, Deserializer, Visitor, MapVisitor, SeqVisitor, Error};
-use self::serde::de::value::{ValueDeserializer, SeqVisitorDeserializer};
+use self::serde::de::value::{ValueDeserializer, SeqVisitorDeserializer, MapVisitorDeserializer};
 
 
 use self::serde_json::Map;
@@ -40,8 +40,21 @@ impl Serialize for Keyword {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize)]
 pub struct Number(pub String);
+
+impl Serialize for Number {
+    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        where S: Serializer
+    {
+        let mut map = serializer.serialize_map(Some(2)).unwrap();
+        try!(serializer.serialize_map_key(&mut map, "type"));
+        try!(serializer.serialize_map_value(&mut map, "num"));
+        try!(serializer.serialize_map_key(&mut map, "val"));
+        try!(serializer.serialize_map_value(&mut map, &self.0));
+        serializer.serialize_map_end(map)
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum MemberKey {
@@ -135,7 +148,15 @@ impl Serialize for Value {
         where S: Serializer
     {
         match *self {
-            Value::Pattern(ref v) => v.serialize(serializer),
+            Value::Pattern(ref v) => match v {
+                &Pattern::Simple(ref v) => v.serialize(serializer),
+                &Pattern::Complex(ref v) => {
+                    let mut map = serializer.serialize_map(Some(1)).unwrap();
+                    try!(serializer.serialize_map_key(&mut map, "val"));
+                    try!(serializer.serialize_map_value(&mut map, &v));
+                    serializer.serialize_map_end(map)
+                },
+            },
             Value::ComplexValue { ref val, ref traits, ref def } => {
                 let mut num_fields = 1;
                 if !val.is_none() {
@@ -242,6 +263,7 @@ pub enum Expression {
         obj: Box<Expression>,
         key: MemberKey,
     },
+    FunctionCall(String),
     Pattern(String),
 }
 
@@ -292,7 +314,7 @@ impl Serialize for Expression {
             &Expression::KeyValueArgument { ref name, ref val} => {
                 let mut map = serializer.serialize_map(Some(3)).unwrap();
                 try!(serializer.serialize_map_key(&mut map, "type"));
-                try!(serializer.serialize_map_value(&mut map, "kw"));
+                try!(serializer.serialize_map_value(&mut map, "kv"));
                 try!(serializer.serialize_map_key(&mut map, "name"));
                 try!(serializer.serialize_map_value(&mut map, name));
                 try!(serializer.serialize_map_key(&mut map, "val"));
@@ -309,10 +331,82 @@ impl Serialize for Expression {
                 try!(serializer.serialize_map_value(&mut map, key));
                 serializer.serialize_map_end(map)
             },
+            &Expression::FunctionCall(ref name) => {
+                let mut map = serializer.serialize_map(Some(2)).unwrap();
+                try!(serializer.serialize_map_key(&mut map, "type"));
+                try!(serializer.serialize_map_value(&mut map, "fun"));
+                try!(serializer.serialize_map_key(&mut map, "name"));
+                try!(serializer.serialize_map_value(&mut map, name));
+                serializer.serialize_map_end(map)
+            },
             &Expression::Pattern(ref val) => {
                 serializer.serialize_str(val)
             }
         }
+    }
+}
+
+enum ExpressionName {
+    String(String),
+    Expression(Expression),
+}
+
+impl Deserialize for ExpressionName {
+    fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
+        where D: Deserializer
+    {
+        struct FieldVisitor;
+
+        impl Visitor for FieldVisitor {
+            type Value = ExpressionName;
+
+            fn visit_str<E>(&mut self, v: &str) -> Result<Self::Value, E>
+                where E: Error
+            {
+                let mut deserializer = v.into_deserializer();
+                Deserialize::deserialize(&mut deserializer).map(ExpressionName::String)
+            }
+
+            fn visit_map<V>(&mut self, visitor: V) -> Result<Self::Value, V::Error>
+                where V: MapVisitor
+            {
+                let mut deserializer = MapVisitorDeserializer::new(visitor);
+                Deserialize::deserialize(&mut deserializer).map(ExpressionName::Expression)
+            }
+        }
+        deserializer.deserialize_struct_field(FieldVisitor)
+    }
+}
+
+enum ExpressionValue {
+    String(String),
+    Expression(Expression),
+}
+
+impl Deserialize for ExpressionValue {
+    fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
+        where D: Deserializer
+    {
+        struct FieldVisitor;
+
+        impl Visitor for FieldVisitor {
+            type Value = ExpressionValue;
+
+            fn visit_str<E>(&mut self, v: &str) -> Result<Self::Value, E>
+                where E: Error
+            {
+                let mut deserializer = v.into_deserializer();
+                Deserialize::deserialize(&mut deserializer).map(ExpressionValue::String)
+            }
+
+            fn visit_map<V>(&mut self, visitor: V) -> Result<Self::Value, V::Error>
+                where V: MapVisitor
+            {
+                let mut deserializer = MapVisitorDeserializer::new(visitor);
+                Deserialize::deserialize(&mut deserializer).map(ExpressionValue::Expression)
+            }
+        }
+        deserializer.deserialize_struct_field(FieldVisitor)
     }
 }
 
@@ -328,15 +422,26 @@ impl Deserialize for Expression {
             fn visit_map<V>(&mut self, mut visitor: V) -> Result<Self::Value, V::Error>
                 where V: MapVisitor
             {
-                let mut name: Option<String> = None;
+                let mut name: Option<ExpressionName> = None;
                 let mut t: Option<String> = None;
+                let mut exp: Option<Expression> = None;
+                let mut vars: Option<Vec<Member>> = None;
+                let mut args: Option<Vec<Expression>> = None;
+                let mut val: Option<ExpressionValue> = None;
+                let mut obj: Option<Box<Expression>> = None;
+                let mut k: Option<MemberKey> = None;
 
                 while let Some(key) = visitor.visit_key::<String>()? {
-                    if key == "type" {
-                        t = Some(visitor.visit_value()?);
-                    }
-                    if key == "name" {
-                        name = Some(visitor.visit_value()?);
+                    match key.as_str() {
+                        "type" => t = Some(visitor.visit_value()?),
+                        "name" => name = Some(visitor.visit_value()?),
+                        "exp" => exp = Some(visitor.visit_value()?),
+                        "vars" => vars = Some(visitor.visit_value()?),
+                        "args" => args = Some(visitor.visit_value()?),
+                        "val" => val = Some(visitor.visit_value()?),
+                        "obj" => obj = Some(visitor.visit_value()?),
+                        "key" => k = Some(visitor.visit_value()?),
+                        _ => {},
                     }
                 }
                 visitor.end()?;
@@ -346,17 +451,114 @@ impl Deserialize for Expression {
                     None => visitor.missing_field("type")?,
                 };
 
-                let name = match name {
-                    Some(name) => name,
-                    None => visitor.missing_field("name")?,
-                };
-
                 match t.as_str() {
                     "ext" => {
+                        let name = match name {
+                            Some(name) => match name {
+                                ExpressionName::String(v) => v,
+                                ExpressionName::Expression(_) => panic!(),
+                            },
+                            None => visitor.missing_field("name")?,
+                        };
                         Ok(Expression::ExternalArgument(name))
                     },
                     "ref" => {
+                        let name = match name {
+                            Some(name) => match name {
+                                ExpressionName::String(v) => v,
+                                ExpressionName::Expression(_) => panic!(),
+                            },
+                            None => visitor.missing_field("name")?,
+                        };
                         Ok(Expression::EntityReference(name))
+                    },
+                    "sel" => {
+                        let exp = match exp {
+                            Some(exp) => exp,
+                            None => visitor.missing_field("exp")?,
+                        };
+                        let vars = match vars {
+                            Some(vars) => vars,
+                            None => visitor.missing_field("vars")?,
+                        };
+                        Ok(Expression::SelectExpression{
+                            exp: Box::new(exp), 
+                            vars: vars,
+                            def: None
+                        })
+                    },
+                    "call" => {
+                        let name = match name {
+                            Some(name) => match name {
+                                ExpressionName::Expression(v) => v,
+                                ExpressionName::String(_) => panic!(),
+                            },
+                            None => visitor.missing_field("name")?,
+                        };
+                        let args = match args {
+                            Some(args) => args,
+                            None => visitor.missing_field("args")?,
+                        };
+                        Ok(Expression::CallExpression{
+                            name: Box::new(name), 
+                            args: args,
+                        })
+                    },
+                    "fun" => {
+                        let name = match name {
+                            Some(name) => match name {
+                                ExpressionName::String(v) => v,
+                                ExpressionName::Expression(_) => panic!(),
+                            },
+                            None => visitor.missing_field("name")?,
+                        };
+                        Ok(Expression::FunctionCall(name))
+                    },
+                    "num" => {
+                        let val = match val {
+                            Some(val) => match val {
+                                ExpressionValue::String(v) => v,
+                                ExpressionValue::Expression(_) => panic!(),
+                            },
+                            None => visitor.missing_field("val")?,
+                        };
+                        Ok(Expression::Number(Number(val)))
+                    },
+                    "kv" => {
+                        let name = match name {
+                            Some(name) => match name {
+                                ExpressionName::String(v) => v,
+                                ExpressionName::Expression(_) => panic!(),
+                            },
+                            None => visitor.missing_field("name")?,
+                        };
+                        let val = match val {
+                            Some(val) => match val {
+                                ExpressionValue::Expression(v) => v,
+                                ExpressionValue::String(v) => {
+                                    Expression::Pattern(v)
+                                },
+                            },
+                            None => visitor.missing_field("val")?,
+                        };
+                        Ok(Expression::KeyValueArgument {
+                            name: name,
+                            val: Box::new(val)
+                        })
+                    },
+                    "mem" => {
+                        let obj = match obj {
+                            Some(obj) => obj,
+                            None => visitor.missing_field("obj")?,
+                        };
+                        let k = match k {
+                            Some(k) => k,
+                            None => visitor.missing_field("key")?,
+                        };
+                        Ok(Expression::Member {
+                            obj: obj,
+                            key: k
+                        })
                     },
                     _ => {
                         panic!()

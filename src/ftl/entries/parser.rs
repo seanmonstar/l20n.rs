@@ -529,6 +529,11 @@ impl<'a> Parser<'a> {
 
         self.bump();
 
+        let exp = match exp {
+            Expression::EntityReference(v) => Expression::FunctionCall(v),
+            _ => exp,
+        };
+
         Expression::CallExpression {
             name: Box::new(exp),
             args: args
@@ -713,6 +718,7 @@ impl<'a> Parser<'a> {
                     return Expression::Number(self.get_number());
                 },
                 '"' => {
+                    self.source.reset_peek();
                     let pat = self.get_pattern();
                     match pat {
                         Pattern::Simple(val) => {
@@ -742,6 +748,7 @@ impl<'a> Parser<'a> {
 
     fn dump_ptr(&mut self) {
         println!("{:?}", self.peek_char().unwrap());
-        println!("{:?}", self.read_char().unwrap());
+        self.source.reset_peek();
+        //println!("{:?}", self.read_char().unwrap());
     }
 }
