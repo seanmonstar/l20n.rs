@@ -1,3 +1,4 @@
+#![deprecated(note = "Look at https://github.com/projectfluent/fluent-rs instead.")]
 //! L20n implementation for localization
 //!
 //! This crate provides an interface to use l20n files to localize your

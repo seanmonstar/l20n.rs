@@ -1,12 +1,12 @@
 [package]
 
 name = "l20n"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Sean McArthur <sean.monstar@gmail.com"]
 license = "MIT"
-description = "An l20n implementation for Rust"
+description = "Deprecated l20n implementation. Look for https://github.com/projectfluent/fluent-rs instead."
 repository = "https://github.com/seanmonstar/l20n.rs"
-keywords = ["l20n", "i18n", "l10n", "internationalization", "localization"]
+keywords = []
 
 [dependencies]
 serde = "0.6"
